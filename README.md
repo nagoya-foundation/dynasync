@@ -20,4 +20,4 @@ There are lots of things to do, the ones in my mind now are listed below.
 
 ## Contributing
 
-Check the [contributing](contributing) file for details, but, in advance, it is pretty intuitive and straightforward.
+Check the [contributing](CONTRIBUTING.md) file for details, but, in advance, it is pretty intuitive and straightforward.
