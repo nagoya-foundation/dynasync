@@ -1,6 +1,6 @@
 To contribute to this project just follow the steps below:
 
-1. [Fork](https://github.com/nagoya-foundation/dinasync/fork) it;
+1. [Fork](https://github.com/nagoya-foundation/dynasync/fork) it;
 2. Create your feature branch (`git checkout -b feature/fooBar`)
 3. Commit your changes (`git commit -am 'Add some fooBar'`)
 4. Push to the branch (`git push origin feature/fooBar`)
