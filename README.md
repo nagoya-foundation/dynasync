@@ -1,4 +1,4 @@
-# dinasync
+# dynasync
 
 > dinasync uses the low-level AWS API to send the files under selected folders to the DinamoDB service. It will send and store it a secure way. So you have versioning for you files for free, since that AWS offers 25GiB DinamoDB storage as a free service.
 
