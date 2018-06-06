@@ -2,6 +2,14 @@
 
 > dynasync uses the low-level AWS API to send the files under selected folders to the DynamoDB service. It will send and store it a secure way. So you have versioning for you files for free, since that AWS offers 25GiB DynamoDB storage as a free service.
 
+# Configuring
+
+First you need an AWS account with the DynamoDB service available and the AWS's credentials in your home folder.
+
+# Running dynasync
+
+Simply issue the command: `python3 main.py`, it will run a setup script and then start monitoring the files you selected.
+
 # Meta
 
 Created by: Brian Mayer - bleemayer@gmail.com	
