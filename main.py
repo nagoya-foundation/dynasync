@@ -1,3 +1,5 @@
+#! /bin/python3
+
 """
 	PROJECT: dynasync: An utility that uses AWS's DynamoDB to store your
 	files.
@@ -10,8 +12,34 @@
 """
 
 import os
-import config
+import json
 import boto3
+
+# ---- Configure ----------------------------------------------------------- #
+
+# Now we create the .config directory if needed
+config_dir = os.path.expanduser("~/.config/dynasync")
+if not os.path.exists(config_dir):
+	os.makedirs(config_dir)
+	print("~/.config/dynasync directory created.")
+
+# Check if config file exists in that dir
+config_file = config_dir + "/dynasync.conf"
+configs = {}
+if os.path.exists(config_file):
+	print("Config file already exists.")
+	with open(config_file, 'r') as file:
+		configs = json.load(file)
+		configs['dir'] = os.path.expanduser(configs['dir'])
+else:
+	# Get configuration parameters from user and write to file
+	configs['dir'] = input("Enter directory to track:")
+	configs['table'] = input("Enter DynamoDB table name:")
+
+	with open(config_file, 'w') as file:
+		file.write(json.dumps(configs))
+
+print("Configuration finished!")
 
 # ---- Connect to DynamoDB ------------------------------------------------- #
 
@@ -19,10 +47,10 @@ print("Connecting...")
 dynamo = boto3.client("dynamodb")
 
 # Check remote table existence
-if config.configs['table'] not in dynamo.list_tables()["TableNames"]:
+if configs['table'] not in dynamo.list_tables()["TableNames"]:
 	print("Remote table not found, creating one...")
 	res = dynamo.create_table(
-		TableName = config.configs['table'],
+		TableName = configs['table'],
 		AttributeDefinitions = [
 			{
 				'AttributeName': 'file',
@@ -72,11 +100,11 @@ def collect_files(root_dir, files):
 
 # Put all files in a list
 tracked_files = []
-collect_files(config.configs['dir'], tracked_files)
+collect_files(configs['dir'], tracked_files)
 
 # Get remote tracked files
 remote_files = dynamo.query(
-	TableName = config.configs['table'],
+	TableName = configs['table'],
 	ExpressionAttributeValues = {
 		':v1': {
 			'B': 'True'
@@ -86,5 +114,6 @@ remote_files = dynamo.query(
 )
 
 # Track all files
-for file in tracked_files:
-	if os.path.getmtime(file)
+#for file in tracked_files:
+#	if os.path.getmtime(file)
+
