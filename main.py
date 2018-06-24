@@ -98,6 +98,7 @@ def collect_files(root_dir, files):
             collect_files(filepath, files)
 
 # Put all files in a list
+print("Collecting files under " + configs['dir'] + " ...")
 tracked_files = []
 collect_files(configs['dir'], tracked_files)
 
@@ -105,34 +106,42 @@ collect_files(configs['dir'], tracked_files)
 local_files = {}
 
 # Append file information like size, mtime &c
+print("Creating files attributes...")
 for file in tracked_files:
     handle = open(file, 'rb')
     fileBytes = handle.read()
     content = str(lzma.compress(fileBytes))
     local_files[file] = {
-        'modTime' = os.path.getmtime(file),
-        'hash' = hashlib.md5(fileBytes).hexdigest(),
-        'content' = content,
-        'size' = len(content),
-        'deleted' = "False"
+        'modTime': os.path.getmtime(file),
+        'hash': hashlib.md5(fileBytes).hexdigest(),
+        'content': content,
+        'size': len(content),
+        'deleted': "False"
     }
     handle.close()
+    print("File " + file + " processed.")
 
 # Get remote tracked files
+print("Querying files in remote table.")
 table_files = dynamo.scan(TableName = configs['table'])['Items']
 
 # Reformat into a dictionary
 remote_files = {}
-for file in len(table_files):
+for file in range(len(table_files)):
     remote_files[table_files[file]['filePath']['S']] = {
-        'modTime' = float(remote_files[file]['modTime']['S']),
-        'hash' = remote_files[file]['hash']['S'],
-        'content' = remote_files[file]['content']['S'],
-        'size' = int(remote_files[file]['size']['N']),
-        'deleted' = remote_files[file]['deleted']['B']
+        'modTime': float(table_files[file]['modTime']['S']),
+        'hash': table_files[file]['hash']['S'],
+        'content': table_files[file]['content']['S'],
+        'size': int(table_files[file]['size']['N']),
+        'deleted': table_files[file]['deleted']['B']
     }
 
-# TODO: Find new local files
+# Find new local files
+newFiles = local_files.keys() - remote_files.keys()
+
+# TODO: Insert them in the remote table
+# for file in newFiles:
+
 
 
 
