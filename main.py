@@ -136,25 +136,39 @@ for file in range(len(table_files)):
         'deleted': table_files[file]['deleted']['B']
     }
 
+# Find existing but modified files
+common_files = set(local_files).intersection(set(remote_files))
+modified_files = {x for x in common_files if local_files[x]['modTime'] > remote_files[x]['modTime']}
+
+if len(modified_files) == 0:
+    print("No modified files.")
+else:
+    print("Modified files to be uploaded:")
+    print(modified_files)
+
 # Find new local files
 newFiles = local_files.keys() - remote_files.keys()
 
-# TODO: Insert them in the remote table
-# for file in newFiles:
+if len(newFiles) == 0:
+    print("No new files.")
+else:
+    print("New files to be uploaded:")
+    print(modified_files)
 
+# Insert them in the remote table
+for newFile in modified_files.union(newFiles):
+    print("Uploading file " + newFile)
+    dynamo.put_item(
+        TableName = 'docs', 
+        Item = {
+            'filePath': {'S': newFile},
+            'modTime': {'S': str(local_files[newFile]['modTime'])},
+            'hash': {'S': local_files[newFile]['hash']},
+            'size': {'N': str(local_files[newFile]['size'])},
+            'content': {'S': local_files[newFile]['content']},
+            'deleted': {'B': "False"}
+        }
+    )
 
-
-
-
-
-
-
-
-
-
-
-
-# Track all files
-#for file in tracked_files:
-#	if os.path.getmtime(file)
+# TODO: Update deleted files
 
