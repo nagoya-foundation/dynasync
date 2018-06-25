@@ -6,3 +6,4 @@
 - [x] Figure out what file attributes to consider
 - [ ] Create loop to keep track of files
 - [ ] Update remote table in file deletion
+- [ ] Remove content from local and remote \_files dicts, too heavy
