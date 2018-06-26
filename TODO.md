@@ -6,4 +6,6 @@
 [X] Figure out what file attributes to consider
 [ ] Create loop to keep track of files
 [ ] Update remote table in file deletion
+[ ] Support files bigger than 400 KiB
+[ ] Create a configuration page in browser
 
