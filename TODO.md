@@ -1,3 +1,4 @@
+- [ ] Create a status interface, show files, usage &c
 - [ ] Support files bigger than 400 KiB
 - [ ] Create a configuration page in browser
 - [ ] Consider timezone in modTime
@@ -6,6 +7,6 @@
 - [ ] Track more than one folder
 - [x] Create configuration file
 - [x] Figure out what file attributes to consider
-- [ ] Create loop to keep track of files
-- [ ] Update remote table in file deletion
+- [x] Create loop to keep track of files
+- [x] Update remote table in file deletion
 - [x] Remove content from local and remote \_files dicts, too heavy
