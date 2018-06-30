@@ -25,8 +25,7 @@ Distributed under The BSD3-clause license. See [LICENSE](LICENSE) for more infor
 
 ### Current work
 
-- Table creation; &
-- Verification logic.
+- Adding support for larger files and more than one folder.
 
 ### To-do
 
