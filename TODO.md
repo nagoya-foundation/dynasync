@@ -1,3 +1,4 @@
+- [x] Pass table and directory as arguments
 - [ ] Check the third key trick to get rid of second table
 - [ ] Create a status interface, show files, usage &c
 - [ ] Support files bigger than 400 KiB
