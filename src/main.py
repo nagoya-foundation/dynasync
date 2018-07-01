@@ -31,21 +31,21 @@ if config.dyna_table not in table_list:
         TableName = config.dyna_table,
         AttributeDefinitions = [
             {
-                'AttributeName': 'deleted',
+                'AttributeName': 'filepath',
                 'AttributeType': 'S'
             },
             {
-                'AttributeName': 'mtime',
+                'AttributeName': 'chunkid',
                 'AttributeType': 'S'
             }
         ],
         KeySchema = [
             {
-                'AttributeName': 'deleted',
+                'AttributeName': 'filepath',
                 'KeyType': 'HASH'
             },
             {
-                'AttributeName': 'mtime',
+                'AttributeName': 'chunkid',
                 'KeyType': 'RANGE'
             }
         ],
@@ -60,17 +60,17 @@ else:
     print("Table found.")
 
 # Now check index table existence
-if config.dyna_index not in table_list:
+if 'dynasync_index' not in table_list:
     print("Creating index table.")
     dynamo.create_table(
-        TableName = config.dyna_index,
+        TableName = 'dynasync_index',
         AttributeDefinitions = [
             {
                 'AttributeName': 'dyna_table',
                 'AttributeType': 'S'
             },
             {
-                'AttributeName': 'filePath',
+                'AttributeName': 'filepath',
                 'AttributeType': 'S'
             }
         ],
@@ -80,7 +80,7 @@ if config.dyna_index not in table_list:
                 'KeyType': 'HASH'
             },
             {
-                'AttributeName': 'filePath',
+                'AttributeName': 'filepath',
                 'KeyType': 'RANGE'
             }
         ],
@@ -92,7 +92,7 @@ if config.dyna_index not in table_list:
     time.sleep(5)
 
 # Table resources
-dyna_index = dynamo.Table(config.dyna_index)
+dyna_index = dynamo.Table('dynasync_index')
 dyna_table = dynamo.Table(config.dyna_table)
 
 # ---- Program execution ---------------------------------------------------- #
@@ -108,8 +108,4 @@ except KeyboardInterrupt:
     print('Interrupted')
     exit(0)
 
-
-# TODO: Use dir as parameter for init and watch
-
-# TODO: Update deleted files
 

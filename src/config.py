@@ -37,7 +37,6 @@ with open(config_file, 'r') as file:
     configs = json.load(file)
     track_dirs = configs['dir']
     dyna_table = configs['table']
-    dyna_index = dyna_table + "_index"
 
 print("Configuration finished!\nChecking if it is valid.")
 if not os.path.exists(track_dirs):

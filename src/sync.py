@@ -4,6 +4,7 @@
 # Copyright Nagoya Foundation 
 # --------------------------------------------------------------------------- #
 
+import math
 import os
 import time
 import hashlib
@@ -12,30 +13,86 @@ import _thread
 
 # Send a file to remote table
 def send_file(table, index, file):
-    with open(file, 'rb') as file_con:
-        fileBytes = file_con.read()
-        content = lzma.compress(fileBytes)
-        if len(content) > 399900:
-            print("File too large (> 400 KiB) for DynamoDB, skipping...")
-        else: 
-            table.put_item(
-                Item = {
-                    'deleted': 'False',
-                    'filePath': file,
-                    'mtime': str(os.path.getmtime(file)),
-                    'hash': hashlib.md5(fileBytes).hexdigest(),
-                    'size': os.path.getsize(file),
-                    'content': content,
-                    'chunked': False
-                }
-            )
+    if os.path.getsize(file) > 100*(2**20):
+        print("File too large (> 100 MiB), skipping...")
+    else:
+        with open(file, 'rb') as file_con:
+            fileBytes = file_con.read()
+            content = lzma.compress(fileBytes)
+            if len(content) > 399900:
+                # Send content in pieces
+                chunks = math.ceil(len(content)/399900)
+                print("Sending " + file + " in " + str(chunks) + " parts.")
+                ck = 0
+                while ck < chunks:
+                    print("Part " + str(ck + 1) + " of " + str(chunks))
+                    table.put_item(
+                        Item = {
+                            'filepath': file,
+                            'deleted': 'False',
+                            'chunkid': str(os.path.getmtime(file))+'/'+str(ck),
+                            'hash': hashlib.md5(fileBytes).hexdigest(),
+                            'mtime': str(os.path.getmtime(file)),
+                            'content': content[ck*399900:(ck + 1)*399900],
+                            'chunks': chunks,
+                            'chunk': ck
+                        }
+                    )
+                    ck += 1
+            else:
+                print("Sending file " + file + "...")
+                table.put_item(
+                    Item = {
+                        'filepath': file,
+                        'deleted': 'False',
+                        'chunkid': str(os.path.getmtime(file)) + '/0',
+                        'mtime': str(os.path.getmtime(file)),
+                        'hash': hashlib.md5(fileBytes).hexdigest(),
+                        'content': content,
+                        'chunks': 1,
+                        'chunk': 0
+                    }
+                )
+            # Update index regardless of the size
             update_index(table, index, file, False)
+
+def get_file(table, file, mtime):
+    # Get first chunk
+    print("Downloading " + file + ".")
+    new_file = table.get_item(
+        Key = {
+            'filepath': file,
+            'mtime': str(mtime),
+            'chunk': 0
+        }
+    )
+    content = new_file['Item']['content']
+
+    # Get other chunks if any
+    chunk = 1
+    chunks = new_file['Item']['chunks']
+    while chunk < chunks:
+        print("Part " + str(chunk) + " of " + str(chunks))
+        new_file = table.get_item(
+            Key = {
+                'filepath': file,
+                'mtime': str(mtime),
+                'chunk': chunk
+            }
+        )
+        content += new_file['Item']['content']
+        chunk += 1
+
+    # Write file to disk
+    with open(file, 'wb') as file_df:
+        file_df.write(content)
+        file_df.close()
 
 def update_index(table, index, file, status):
     index.update_item(
         Key = {
             'dyna_table': table.name,
-            'filePath': file
+            'filepath': file
         },
         UpdateExpression = "set mtime = :r, deleted = :s",
         ExpressionAttributeValues = {
@@ -71,7 +128,7 @@ def init(dyna_table, dyna_index, track_dirs):
     print("Querying files in remote table.")
     table_files = dyna_index.scan(
         ExpressionAttributeNames = {
-            '#fp': 'filePath',
+            '#fp': 'filepath',
             '#mt': 'mtime'
         },
         ExpressionAttributeValues = {
@@ -84,28 +141,18 @@ def init(dyna_table, dyna_index, track_dirs):
 
     # Reformat into a dictionary
     for file in range(len(table_files)):
-        remote_files.append(table_files[file]['filePath'])
-        rems[table_files[file]['filePath']] = {
+        remote_files.append(table_files[file]['filepath'])
+        rems[table_files[file]['filepath']] = {
             'mtime': float(table_files[file]['mtime'])
         }
 
     # Download remote only files
     for file in set(remote_files) - set(local_files):
-        print("Downloading remote file " + file)
-        new_file = dyna_table.get_item(
-            Key = {
-                'filePath': file,
-                'mtime': str(rems[file]['mtime'])
-            }
-        )
-        with open(file, 'wb') as file_df:
-            file_df.write(new_file['Item']['content'])
-            file_df.close()
+        get_file(dyna_table, file, rems[file]['mtime'])
 
     # Insert modified files in the remote table
     for f in local_files:
         if f not in remote_files or os.path.getmtime(f) > rems[f]['mtime']:
-            print("Sending file " + f + "...")
             send_file(dyna_table, dyna_index, f)
 
 
@@ -147,12 +194,4 @@ def watch(dyna_table, dyna_index, track_dirs):
             (dyna_table, dyna_index, olds, news, maxm)
         )
         olds = news
-
-
-
-
-
-
-
-
 
