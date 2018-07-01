@@ -1,7 +1,7 @@
 - [x] Pass table and directory as arguments
-- [ ] Check the third key trick to get rid of second table
+- [x] Check the third key trick to get rid of second table
 - [ ] Create a status interface, show files, usage &c
-- [ ] Support files bigger than 400 KiB
+- [x] Support files bigger than 400 KiB
 - [ ] Create a configuration page in browser
 - [ ] Consider timezone in modTime
 - [x] Compare local and remote files in an efficient way
