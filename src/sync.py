@@ -127,6 +127,7 @@ def init(dyna_table, dyna_index, track_dirs):
     remote_files = []
     rems = {}
     collect_files(track_dirs, local_files)
+    print(str(len(local_files)) + " files found.")
 
     # Get remote tracked files
     print("Querying files in remote table.")
@@ -144,7 +145,9 @@ def init(dyna_table, dyna_index, track_dirs):
     )['Items']
 
     # Reformat into a dictionary
-    for file in range(len(table_files)):
+    nitem = len(table_files)
+    print(str(nitem) + " items read.")
+    for file in range(nitem):
         remote_files.append(table_files[file]['filepath'])
         rems[table_files[file]['filepath']] = {
             'mtime': float(table_files[file]['mtime'])
