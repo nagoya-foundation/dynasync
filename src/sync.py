@@ -14,7 +14,7 @@ import _thread
 # Send a file to remote table
 def send_file(table, index, file):
     if os.path.getsize(file) > 100*(2**20):
-        print("File too large (> 100 MiB), skipping...")
+        print("File " + file + " is too large (> 100 MiB), skipping...")
     else:
         with open(file, 'rb') as file_con:
             fileBytes = file_con.read()
@@ -39,6 +39,7 @@ def send_file(table, index, file):
                         }
                     )
                     ck += 1
+                    time.sleep(2)
             else:
                 print("Sending file " + file + "...")
                 table.put_item(
@@ -55,6 +56,9 @@ def send_file(table, index, file):
                 )
             # Update index regardless of the size
             update_index(table, index, file, False)
+            
+            # Wait a sec to preserve throughput
+            time.sleep(1)
 
 def get_file(table, file, mtime):
     # Get first chunk

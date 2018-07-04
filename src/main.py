@@ -50,8 +50,11 @@ if config.dyna_table not in table_list:
             }
         ],
         ProvisionedThroughput = {
-            'ReadCapacityUnits': 10,
-            'WriteCapacityUnits': 10
+            'ReadCapacityUnits': 20,
+            'WriteCapacityUnits': 24
+        },
+        SSESpecification = {
+            'Enabled': True
         }
     )
     print("Table created. Wait a little.")
@@ -85,8 +88,11 @@ if 'dynasync_index' not in table_list:
             }
         ],
         ProvisionedThroughput = {
-            'ReadCapacityUnits': 10,
-            'WriteCapacityUnits': 10
+            'ReadCapacityUnits': 5,
+            'WriteCapacityUnits': 1
+        },
+        SSESpecification = {
+            'Enabled': True
         }
     )
     time.sleep(5)
