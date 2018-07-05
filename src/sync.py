@@ -175,6 +175,11 @@ def resolve_diff(dyna_table, dyna_index, olds, news, mtime):
         print("File " + file + " deleted, updating.")
         update_index(dyna_table, dyna_index, file, True)
 
+    # Send new files
+    for file in set(news) - set(olds):
+        print("Uploading new file " + file)
+        send_file(dyna_table, dyna_index, file)
+
 # Keep track of files
 def watch(dyna_table, dyna_index, track_dirs):
 
