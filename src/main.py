@@ -20,7 +20,8 @@ import sync
 
 # ---- Connect to DynamoDB -------------------------------------------------- #
 
-print("Connecting...")
+print("Dynasync starting " + time.ctime())
+print("Connecting to AWS...")
 dynamo = boto3.resource("dynamodb")
 
 # Check remote table existence
@@ -31,22 +32,14 @@ if config.dyna_table not in table_list:
         TableName = config.dyna_table,
         AttributeDefinitions = [
             {
-                'AttributeName': 'filepath',
-                'AttributeType': 'S'
-            },
-            {
                 'AttributeName': 'chunkid',
                 'AttributeType': 'S'
             }
         ],
         KeySchema = [
             {
-                'AttributeName': 'filepath',
-                'KeyType': 'HASH'
-            },
-            {
                 'AttributeName': 'chunkid',
-                'KeyType': 'RANGE'
+                'KeyType': 'HASH'
             }
         ],
         ProvisionedThroughput = {
@@ -58,9 +51,7 @@ if config.dyna_table not in table_list:
         }
     )
     print("Table created. Wait a little.")
-    time.sleep(5)
-else:
-    print("Table found.")
+    time.sleep(3)
 
 # Now check index table existence
 if 'dynasync_index' not in table_list:
@@ -95,7 +86,8 @@ if 'dynasync_index' not in table_list:
             'Enabled': True
         }
     )
-    time.sleep(5)
+    print("Index table created. Wait a little.")
+    time.sleep(3)
 
 # Table resources
 dyna_index = dynamo.Table('dynasync_index')
