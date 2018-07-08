@@ -13,12 +13,13 @@ import _thread
 
 # Send a file to remote table
 def send_file(table, index, file):
-    if os.path.getsize(file) > 100*(2**20):
-        print("File " + file + " is too large (> 100 MiB), skipping...")
+    if os.path.getsize(file) > 50*(2**20):
+        print("File " + file + " is too large (> 50 MiB), skipping...")
     else:
         with open(file, 'rb') as file_con:
             fileBytes = file_con.read()
             content = lzma.compress(fileBytes)
+            hashes = []
             if len(content) > 399900:
                 # Send content in pieces
                 chunks = math.ceil(len(content)/399900)
@@ -26,73 +27,72 @@ def send_file(table, index, file):
                 ck = 0
                 while ck < chunks:
                     print("Part " + str(ck + 1) + " of " + str(chunks))
+                    chunk = content[ck*399900:(ck + 1)*399900]
+                    hash = hashlib.sha1(chunk).hexdigest()
+                    hashes.append(hash)
                     table.put_item(
                         Item = {
-                            'filepath': file,
-                            'deleted': 'False',
-                            'chunkid': str(os.path.getmtime(file))+'/'+str(ck),
-                            'hash': hashlib.md5(fileBytes).hexdigest(),
-                            'mtime': str(os.path.getmtime(file)),
-                            'content': content[ck*399900:(ck + 1)*399900],
-                            'chunks': chunks,
-                            'chunk': ck
-                        }
+                            'chunkid': hash,
+                            'content': chunk
+                        },
+                        ConditionExpression = 'attribute_not_exists(chunkid)'
                     )
                     ck += 1
                     time.sleep(2)
             else:
                 print("Sending file " + file + "...")
+                hashes.append(hashlib.sha1(content).hexdigest())
                 table.put_item(
                     Item = {
-                        'filepath': file,
-                        'deleted': 'False',
-                        'chunkid': str(os.path.getmtime(file)) + '/0',
-                        'mtime': str(os.path.getmtime(file)),
-                        'hash': hashlib.md5(fileBytes).hexdigest(),
-                        'content': content,
-                        'chunks': 1,
-                        'chunk': 0
-                    }
+                        'chunkid': hashes[0],
+                        'content': content
+                    },
+                    ConditionExpression = 'attribute_not_exists(chunkid)'
                 )
+            
             # Update index regardless of the size
-            update_index(table, index, file, False)
+            update_index(table, index, file, False, hashes)
             
             # Wait a sec to preserve throughput
             time.sleep(1)
 
-def get_file(table, file, mtime):
-    # Get first chunk
-    print("Downloading " + file + ".")
-    new_file = table.get_item(
-        Key = {
-            'filepath': file,
-            'mtime': str(mtime),
-            'chunk': 0
-        }
-    )
-    content = new_file['Item']['content']
+def get_file(table, file, files, mtime):
 
-    # Get other chunks if any
-    chunk = 1
-    chunks = new_file['Item']['chunks']
-    while chunk < chunks:
-        print("Part " + str(chunk) + " of " + str(chunks))
+    # Initialize empty file contents variable
+    content = b''
+
+    # Get each chunk
+    for chunk in files:
+        print("Downloading " + files + ".")
         new_file = table.get_item(
             Key = {
-                'filepath': file,
-                'mtime': str(mtime),
-                'chunk': chunk
+                'chunkid': files
             }
         )
+        # Collect chunk's contents
         content += new_file['Item']['content']
-        chunk += 1
 
     # Write file to disk
     with open(file, 'wb') as file_df:
         file_df.write(content)
         file_df.close()
 
-def update_index(table, index, file, status):
+def update_index(table, index, file, status, chunk_list):
+    index.update_item(
+        Key = {
+            'dyna_table': table.name,
+            'filepath': file
+        },
+        UpdateExpression = "set mtime = :r, deleted = :s, chunks = :cl",
+        ExpressionAttributeValues = {
+            ':r': str(os.path.getmtime(file)),
+            ':s': status,
+            ':cl': chunk_list
+        }
+    )
+
+def set_deleted(table, index, file, mtime):
+    print("File " + file + " deleted, updating.")
     index.update_item(
         Key = {
             'dyna_table': table.name,
@@ -100,8 +100,8 @@ def update_index(table, index, file, status):
         },
         UpdateExpression = "set mtime = :r, deleted = :s",
         ExpressionAttributeValues = {
-            ':r': str(os.path.getmtime(file)),
-            ':s': status
+            ':r': str(mtime),
+            ':s': True
         }
     )
 
@@ -133,14 +133,14 @@ def init(dyna_table, dyna_index, track_dirs):
     print("Querying files in remote table.")
     table_files = dyna_index.scan(
         ExpressionAttributeNames = {
-            '#fp': 'filepath',
-            '#mt': 'mtime'
+            '#mt': 'mtime',
+            '#cl': 'chunks'
         },
         ExpressionAttributeValues = {
             ':a': False,
             ':t': dyna_table.name
         },
-        ProjectionExpression = '#fp, #mt',
+        ProjectionExpression = '#mt, #cl',
         FilterExpression = 'deleted = :a and dyna_table = :t'
     )['Items']
 
@@ -150,12 +150,13 @@ def init(dyna_table, dyna_index, track_dirs):
     for file in range(nitem):
         remote_files.append(table_files[file]['filepath'])
         rems[table_files[file]['filepath']] = {
-            'mtime': float(table_files[file]['mtime'])
+            'mtime': float(table_files[file]['mtime']),
+            'chunks': table_files[file]['chunks']
         }
 
     # Download remote only files
     for file in set(remote_files) - set(local_files):
-        get_file(dyna_table, file, rems[file]['mtime'])
+        get_file(dyna_table, file, rems[file]['chunks'], rems[file]['mtime'])
 
     # Insert modified files in the remote table
     for f in local_files:
@@ -167,17 +168,14 @@ def resolve_diff(dyna_table, dyna_index, olds, news, mtime):
     # Send modified files
     for file in news:
         if os.path.getmtime(file) > mtime:
-            print("File " + file + " modified, sending.")
             send_file(dyna_table, dyna_index, file)
 
     # Update deleted files
     for file in set(olds) - set(news):
-        print("File " + file + " deleted, updating.")
-        update_index(dyna_table, dyna_index, file, True)
+        set_deleted(dyna_table, dyna_index, file, mtime)
 
     # Send new files
     for file in set(news) - set(olds):
-        print("Uploading new file " + file)
         send_file(dyna_table, dyna_index, file)
 
 # Keep track of files
@@ -194,7 +192,7 @@ def watch(dyna_table, dyna_index, track_dirs):
         maxm = max([os.path.getmtime(x) for x in olds]) 
         
         # Wait some time
-        time.sleep(10)
+        time.sleep(7)
         
         # Recollect files
         news = []
