@@ -87,7 +87,7 @@ if 'dynasync_index' not in table_list:
         }
     )
     print("Index table created. Wait a little.")
-    time.sleep(3)
+    time.sleep(4)
 
 # Table resources
 dyna_index = dynamo.Table('dynasync_index')
