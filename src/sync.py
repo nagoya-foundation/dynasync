@@ -30,28 +30,35 @@ def send_file(table, index, file):
                     chunk = content[ck*399900:(ck + 1)*399900]
                     hash = hashlib.sha1(chunk).hexdigest()
                     hashes.append(hash)
-                    table.put_item(
-                        Item = {
-                            'chunkid': hash,
-                            'content': chunk
-                        },
-                        ConditionExpression = 'attribute_not_exists(chunkid)'
-                    )
                     ck += 1
+                    try:
+                        table.put_item(
+                            Item = {
+                                'chunkid': hash,
+                                'content': chunk
+                            },
+                            ConditionExpression='attribute_not_exists(chunkid)'
+                        )
+                    except:
+                        print('Chunk already exists or error happened.')
+                        continue
                     time.sleep(2)
             else:
                 print("Sending file " + file + "...")
                 hashes.append(hashlib.sha1(content).hexdigest())
-                table.put_item(
-                    Item = {
-                        'chunkid': hashes[0],
-                        'content': content
-                    },
-                    ConditionExpression = 'attribute_not_exists(chunkid)'
-                )
+                try:
+                    table.put_item(
+                        Item = {
+                            'chunkid': hashes[0],
+                            'content': content
+                        },
+                        ConditionExpression = 'attribute_not_exists(chunkid)'
+                    )
+                except:
+                    print('Chunk already exists or error happened.')
             
             # Update index regardless of the size
-            update_index(table, index, file, False, hashes)
+            update_index(table, index, file, hashes)
             
             # Wait a sec to preserve throughput
             time.sleep(1)
@@ -77,7 +84,7 @@ def get_file(table, file, files, mtime):
         file_df.write(content)
         file_df.close()
 
-def update_index(table, index, file, status, chunk_list):
+def update_index(table, index, file, chunk_list):
     index.update_item(
         Key = {
             'dyna_table': table.name,
@@ -86,7 +93,7 @@ def update_index(table, index, file, status, chunk_list):
         UpdateExpression = "set mtime = :r, deleted = :s, chunks = :cl",
         ExpressionAttributeValues = {
             ':r': str(os.path.getmtime(file)),
-            ':s': status,
+            ':s': False,
             ':cl': chunk_list
         }
     )
