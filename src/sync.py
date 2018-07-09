@@ -13,55 +13,46 @@ import _thread
 
 # Send a file to remote table
 def send_file(table, index, file):
-    if os.path.getsize(file) > 50*(2**20):
+    # Open file and compress its contents 
+    with open(file, 'rb') as file_con:
+        fileBytes = file_con.read()
+        content = lzma.compress(fileBytes)
+
+    if len(content) > 50*(2**20):
         print("File " + file + " is too large (> 50 MiB), skipping...")
-    else:
-        with open(file, 'rb') as file_con:
-            fileBytes = file_con.read()
-            content = lzma.compress(fileBytes)
-            hashes = []
-            if len(content) > 399900:
-                # Send content in pieces
-                chunks = math.ceil(len(content)/399900)
-                print("Sending " + file + " in " + str(chunks) + " parts.")
-                ck = 0
-                while ck < chunks:
-                    print("Part " + str(ck + 1) + " of " + str(chunks))
-                    chunk = content[ck*399900:(ck + 1)*399900]
-                    hash = hashlib.sha1(chunk).hexdigest()
-                    hashes.append(hash)
-                    ck += 1
-                    try:
-                        table.put_item(
-                            Item = {
-                                'chunkid': hash,
-                                'content': chunk
-                            },
-                            ConditionExpression='attribute_not_exists(chunkid)'
-                        )
-                    except:
-                        print('Chunk already exists or error happened.')
-                        continue
-                    time.sleep(2)
-            else:
-                print("Sending file " + file + "...")
-                hashes.append(hashlib.sha1(content).hexdigest())
-                try:
-                    table.put_item(
-                        Item = {
-                            'chunkid': hashes[0],
-                            'content': content
-                        },
-                        ConditionExpression = 'attribute_not_exists(chunkid)'
-                    )
-                except:
-                    print('Chunk already exists or error happened.')
-            
-            # Update index regardless of the size
-            update_index(table, index, file, hashes)
+        return 0
+    
+    # Send content in pieces of 256KiB
+    chunks = math.ceil(len(content)/2**18)
+    hashes = []
+    ck = 0
+    while ck < chunks:
+        # Send the chunk and its sha1
+        print("Sending " + file + "\t" + str(ck + 1) + "/" + str(chunks))
+        chunk = content[ck*(2**18):(ck + 1)*(2**18)]
+        hash = hashlib.sha1(chunk).hexdigest()
+        hashes.append(hash)
+        ck += 1
+        
+        # Try to send the chunk
+        try:
+            table.put_item(
+                Item = {
+                    'chunkid': hash,
+                    'content': chunk
+                },
+                ConditionExpression = 'attribute_not_exists(chunkid)'
+            )
             
             # Wait a sec to preserve throughput
             time.sleep(1)
+        except:
+            print('Chunk already exists or error happened.')
+            continue
+        
+        # Update index regardless of the size
+        update_index(table, index, file, hashes)
+
 
 def get_file(table, file, files, mtime):
 
