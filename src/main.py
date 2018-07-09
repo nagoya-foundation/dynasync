@@ -51,7 +51,7 @@ if config.dyna_table not in table_list:
         }
     )
     print("Table created. Wait a little.")
-    time.sleep(3)
+    time.sleep(5)
 
 # Now check index table existence
 if 'dynasync_index' not in table_list:
@@ -87,7 +87,7 @@ if 'dynasync_index' not in table_list:
         }
     )
     print("Index table created. Wait a little.")
-    time.sleep(4)
+    time.sleep(5)
 
 # Table resources
 dyna_index = dynamo.Table('dynasync_index')
@@ -95,15 +95,15 @@ dyna_table = dynamo.Table(config.dyna_table)
 
 # ---- Program execution ---------------------------------------------------- #
 
-# Run initialization
-sync.init(dyna_table, dyna_index, config.track_dirs)
-
-# Keep walking
-print("Synchronized, watching for changes...") 
 try:
+    # Run initialization
+    sync.init(dyna_table, dyna_index, config.track_dirs)
+
+    # Keep walking
+    print("Synchronized, watching for changes...") 
     sync.watch(dyna_table, dyna_index, config.track_dirs)
 except KeyboardInterrupt:
-    print('Interrupted')
+    print('Interrupted by user. Exiting program...')
     exit(0)
 
 
