@@ -48,7 +48,6 @@ def send_file(table, index, file):
             time.sleep(1)
         except:
             print('Chunk already exists or error happened.')
-            continue
         
         # Update index regardless of the size
         update_index(table, index, file, hashes)
