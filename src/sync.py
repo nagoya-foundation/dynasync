@@ -131,14 +131,15 @@ def init(dyna_table, dyna_index, track_dirs):
     print("Querying files in remote table.")
     table_files = dyna_index.scan(
         ExpressionAttributeNames = {
-            '#mt': 'mtime',
-            '#cl': 'chunks'
+            '#fp': 'filepath',
+            '#cl': 'chunks',
+            '#mt': 'mtime'
         },
         ExpressionAttributeValues = {
             ':a': False,
             ':t': dyna_table.name
         },
-        ProjectionExpression = '#mt, #cl',
+        ProjectionExpression = '#fp, #mt, #cl',
         FilterExpression = 'deleted = :a and dyna_table = :t'
     )['Items']
 
