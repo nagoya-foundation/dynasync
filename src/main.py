@@ -20,7 +20,6 @@ import sync
 
 # ---- Connect to DynamoDB -------------------------------------------------- #
 
-print("Dynasync starting " + time.ctime())
 print("Connecting to AWS...")
 dynamo = boto3.resource("dynamodb")
 

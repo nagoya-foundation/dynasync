@@ -11,6 +11,7 @@ import argparse
 
 # ---- Command line arguments ----------------------------------------------- #
 
+print("Dynasync starting " + time.ctime())
 parser = argparse.ArgumentParser()
 parser.add_argument("--reconf", help = "call configure", action = "store_true")
 args = parser.parse_args()
