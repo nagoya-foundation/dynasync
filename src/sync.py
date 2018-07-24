@@ -9,6 +9,7 @@ import os
 import time
 import hashlib
 import lzma
+import tqdm
 import _thread
 
 # Send a file to remote table
@@ -26,9 +27,8 @@ def send_file(table, index, file):
     chunks = math.ceil(len(content)/2**18)
     hashes = []
     ck = 0
-    while ck < chunks:
+    for ck in tqdm.trange(chunks, ascii = True, desc = "Sending " + file):
         # Send the chunk and its sha1
-        print("Sending " + file + "\t" + str(ck + 1) + "/" + str(chunks))
         chunk = content[ck*(2**18):(ck + 1)*(2**18)]
         hash = hashlib.sha1(chunk).hexdigest()
         hashes.append(hash)
@@ -47,7 +47,7 @@ def send_file(table, index, file):
             # Wait a sec to preserve throughput
             time.sleep(1)
         except:
-            print('Chunk already exists or error happened.')
+            Nothing 
         
         # Update index regardless of the size
         update_index(table, index, file, hashes)
