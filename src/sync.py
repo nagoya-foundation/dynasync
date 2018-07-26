@@ -47,8 +47,8 @@ def send_file(table, index, file):
             # Wait a sec to preserve throughput
             time.sleep(1)
         except:
-            Nothing 
-        
+            pass
+
         # Update index regardless of the size
         update_index(table, index, file, hashes)
 
