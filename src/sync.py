@@ -14,15 +14,16 @@ import _thread
 
 # Send a file to remote table
 def send_file(table, index, file):
+    # Verify file size
+    if os.path.getsize(file) > 100*(2**20):
+        print("File " + file + " is too large (> 100 MiB), skipping...")
+        return 0
+    
     # Open file and compress its contents 
     with open(file, 'rb') as file_con:
         fileBytes = file_con.read()
         content = lzma.compress(fileBytes)
 
-    if len(content) > 50*(2**20):
-        print("File " + file + " is too large (> 50 MiB), skipping...")
-        return 0
-    
     # Send content in pieces of 256KiB
     chunks = math.ceil(len(content)/2**18)
     hashes = []
