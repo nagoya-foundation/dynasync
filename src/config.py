@@ -29,7 +29,7 @@ config_file = config_dir + "/dynasync.conf"
 if not os.path.exists(config_file) or args.reconf:
     # Get configuration parameters from user and write to file
     print("Creating configuration file.")
-    track_dirs = os.path.expanduser(input("Enter directory to track:"))
+    track_dirs = input("Enter directory to track:")
     dyna_table = input("Enter DynamoDB table name:")
     with open(config_file, 'w') as file:
         file.write(json.dumps({'dir': track_dirs, 'table': dyna_table}))
