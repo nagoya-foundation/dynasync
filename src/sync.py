@@ -178,7 +178,7 @@ def init(dyna_table, dyna_index, track_dirs):
 def resolve_diff(dyna_table, dyna_index, root, olds, news, mtime):
     # Send modified files
     for file in news:
-        if os.path.getmtime(file) > mtime:
+        if os.path.getmtime(os.path.join(root, file)) > mtime:
             send_file(dyna_table, dyna_index, root, file)
 
     # Update deleted files
@@ -201,7 +201,7 @@ def watch(dyna_table, dyna_index, track_dirs):
     # Loop forever
     while True:
         # Get the bigger mod time
-        maxm = max([os.path.getmtime(x) for x in olds]) 
+        maxm = max([os.path.getmtime(os.path.join(paths, x)) for x in olds])
         
         # Wait some time
         time.sleep(7)
