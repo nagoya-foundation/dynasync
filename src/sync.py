@@ -88,23 +88,31 @@ def set_deleted(table, index, file, mtime):
         }
     )
 
-def get_file(table, root, file, files):
+def get_file(table, root, file, chunks):
 
     # Initialize empty file contents variable
     content = b''
 
     # Get each chunk
-    for chunk in files:
-        print("Downloading " + files + ".")
-        new_file = table.get_item(
-            Key = {
-                'chunkid': files
-            }
-        )
-        # Collect chunk's contents
-        content += new_file['Item']['content']
+    for chunk in chunks:
+        print("Downloading " + file + ".")
+        try:
+            new_file = table.get_item(
+                Key = {
+                    'chunkid': chunk
+                }
+            )
+            # Collect chunk's contents
+            content += lzma.decompress(new_file['Item']['content'].value)
+        except KeyboardInterrupt:
+            exit()
+
+        except:
+            print("Chunk not found!")
+            break
 
     # Write file to disk
+    os.makedirs(os.path.dirname(os.path.join(root, file)), exist_ok=True)
     with open(os.path.join(root, file), 'wb') as file_df:
         file_df.write(content)
         file_df.close()
