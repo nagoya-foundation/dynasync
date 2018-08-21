@@ -148,7 +148,8 @@ def init(dyna_table, dyna_index, track_dirs):
 
     # Get remote tracked files
     print("Querying files in remote table.")
-    table_files = dyna_index.scan(
+    file_count = 0
+    scan_result = dyna_index.scan(
         ExpressionAttributeNames = {
             '#fp': 'filepath',
             '#cl': 'chunks',
@@ -160,12 +161,35 @@ def init(dyna_table, dyna_index, track_dirs):
         },
         ProjectionExpression = '#fp, #mt, #cl',
         FilterExpression = 'deleted = :a and dyna_table = :t'
-    )['Items']
+    )
+    table_files = scan_result['Items']
+    file_count += scan_result['Count']
+
+    # Keep scanning until all results are received
+    while 'LastEvaluatedKey' in scan_result.keys():
+        # Scan from the last result
+        scan_result = dyna_index.scan(
+            ExpressionAttributeNames = {
+                '#fp': 'filepath',
+                '#cl': 'chunks',
+                '#mt': 'mtime'
+            },
+            ExpressionAttributeValues = {
+                ':a': False,
+                ':t': dyna_table.name
+            },
+            ProjectionExpression = '#fp, #mt, #cl',
+            FilterExpression = 'deleted = :a and dyna_table = :t',
+            ExclusiveStartKey = scan_result['LastEvaluatedKey']
+        )
+
+        # Merge all items
+        table_files.append(scan_result['Items'])
+        file_count += scan_result['Count']
 
     # Reformat into a dictionary
-    nitem = len(table_files)
-    print(str(nitem) + " items read.")
-    for file in range(nitem):
+    print(str(file_count) + " items read.")
+    for file in range(file_count):
         remote_files.append(table_files[file]['filepath'])
         rems[table_files[file]['filepath']] = {
             'mtime': table_files[file]['mtime'],
