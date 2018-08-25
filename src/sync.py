@@ -22,7 +22,7 @@ def send_file(table, index, root, file):
     if os.path.getsize(fpath) > 104857600:
         print("File " + file + " is too large (> 100 MiB), skipping...")
         return 0
-    
+
     # Get modification time for update_index
     mtime = os.path.getmtime(fpath)
 
@@ -35,28 +35,31 @@ def send_file(table, index, root, file):
     chunks = math.ceil(len(content)/262144)
     hashes = []
     ck = 0
-    for ck in tqdm.trange(chunks, ascii = True, desc = "Sending " + file):
+    for ck in tqdm.trange(chunks, ascii=True, desc="Sending " + os.path.basename(file)):
         # Send the chunk and its sha1
         chunk = content[ck*262144:(ck + 1)*262144]
         hash = hashlib.sha1(chunk).hexdigest()
         hashes.append(hash)
         ck += 1
-        
+
         # Try to send the chunk
         try:
-            table.put_item(
+            new_item = table.put_item(
                 Item = {
                     'chunkid': hash,
                     'content': chunk
                 },
-                ConditionExpression = 'attribute_not_exists(chunkid)'
+                ConditionExpression = 'attribute_not_exists(chunkid)',
+                ReturnConsumedCapacity = 'TOTAL'
             )
-            
+
             # Wait a sec to preserve throughput
-            time.sleep(1)
+            if new_item['ConsumedCapacity']['CapacityUnits'] > 24:
+                time.sleep(new_item['ConsumedCapacity']['CapacityUnits']/24)
+
         except:
             pass
-        
+
         # Update index regardless of the size
         update_index(table, index, file, hashes, mtime)
 
@@ -94,27 +97,32 @@ def get_file(table, root, file, chunks):
     content = b''
 
     # Get each chunk
-    for chunk in chunks:
-        print("Downloading " + file + ".")
+    for i in tqdm.trange(len(chunks), ascii=True, desc="Getting " + os.path.basename(file)):
         try:
             new_file = table.get_item(
                 Key = {
-                    'chunkid': chunk
-                }
+                    'chunkid': chunks[i]
+                },
+                ReturnConsumedCapacity = 'TOTAL'
             )
-            # Collect chunk's contents
-            content += lzma.decompress(new_file['Item']['content'].value)
         except KeyboardInterrupt:
             exit()
 
         except:
-            print("Chunk not found!")
-            break
+            print("Chunk " + chunks[i] +  " not found!")
+            pass
+
+        # Collect chunk's contents
+        content += new_file['Item']['content'].value
+
+        # Wait based on consumed capacity
+        if new_file['ConsumedCapacity']['CapacityUnits'] > 15:
+            time.sleep(new_file['ConsumedCapacity']['CapacityUnits']/15)
 
     # Write file to disk
     os.makedirs(os.path.dirname(os.path.join(root, file)), exist_ok=True)
     with open(os.path.join(root, file), 'wb') as file_df:
-        file_df.write(content)
+        file_df.write(lzma.decompress(content))
         file_df.close()
 
 # Get all files under the selected dir
@@ -125,7 +133,7 @@ def collect_files(root_dir, dir, files):
     # Search through all files
     for filename in dir_files:
         filepath = os.path.join(dir, filename)
-        
+
         # Check if it's a normal file or directory
         if os.path.isfile(filepath):
             path = os.path.relpath(filepath, root_dir)
@@ -141,8 +149,6 @@ def init(dyna_table, dyna_index, track_dirs):
     # Put all files in a list
     print("Collecting files under " + track_dirs + "...")
     local_files = []
-    remote_files = []
-    rems = {}
     collect_files(paths, paths, local_files)
     print(str(len(local_files)) + " files found.")
 
@@ -160,13 +166,18 @@ def init(dyna_table, dyna_index, track_dirs):
             ':t': dyna_table.name
         },
         ProjectionExpression = '#fp, #mt, #cl',
-        FilterExpression = 'deleted = :a and dyna_table = :t'
+        FilterExpression = 'deleted = :a and dyna_table = :t',
+        ReturnConsumedCapacity = 'TOTAL'
     )
     table_files = scan_result['Items']
     file_count += scan_result['Count']
 
     # Keep scanning until all results are received
     while 'LastEvaluatedKey' in scan_result.keys():
+        # Wait if needed
+        if scan_result['ConsumedCapacity']['CapacityUnits'] > 10:
+            time.sleep(scan_result['ConsumedCapacity']['CapacityUnits']/10)
+
         # Scan from the last result
         scan_result = dyna_index.scan(
             ExpressionAttributeNames = {
@@ -180,15 +191,18 @@ def init(dyna_table, dyna_index, track_dirs):
             },
             ProjectionExpression = '#fp, #mt, #cl',
             FilterExpression = 'deleted = :a and dyna_table = :t',
-            ExclusiveStartKey = scan_result['LastEvaluatedKey']
+            ExclusiveStartKey = scan_result['LastEvaluatedKey'],
+            ReturnConsumedCapacity = 'TOTAL'
         )
 
         # Merge all items
-        table_files.append(scan_result['Items'])
+        table_files.extend(scan_result['Items'])
         file_count += scan_result['Count']
+        print(str(file_count) + " items read.")
 
     # Reformat into a dictionary
-    print(str(file_count) + " items read.")
+    remote_files = []
+    rems = {}
     for file in range(file_count):
         remote_files.append(table_files[file]['filepath'])
         rems[table_files[file]['filepath']] = {
@@ -234,18 +248,18 @@ def watch(dyna_table, dyna_index, track_dirs):
     while True:
         # Get the bigger mod time
         maxm = max([os.path.getmtime(os.path.join(paths, x)) for x in olds])
-        
+
         # Wait some time
         time.sleep(7)
-        
+
         # Recollect files
         news = []
         collect_files(paths, paths, news)
-        
+
         # Start a tread to resolve and send updates
         _thread.start_new_thread(
-            resolve_diff,
-            (dyna_table, dyna_index, paths, olds, news, maxm)
-        )
+                resolve_diff,
+                (dyna_table, dyna_index, paths, olds, news, maxm)
+                )
         olds = news
 
