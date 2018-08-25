@@ -198,9 +198,9 @@ def init(dyna_table, dyna_index, track_dirs):
         # Merge all items
         table_files.extend(scan_result['Items'])
         file_count += scan_result['Count']
-        print(str(file_count) + " items read.")
 
     # Reformat into a dictionary
+    print(str(file_count) + " items read.")
     remote_files = []
     rems = {}
     for file in range(file_count):
