@@ -40,7 +40,7 @@ with open(config_file, 'r') as file:
     dyna_table = configs['table']
 
 print("Configuration finished!\nChecking if it is valid.")
-if not os.path.exists(track_dirs):
+if not os.path.exists(os.path.expanduser(track_dirs)):
     print("Entered directory does not exists! Program will fail.")
     exit(-1)
 
