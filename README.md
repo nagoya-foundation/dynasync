@@ -8,14 +8,15 @@ First you need an AWS account with the DynamoDB service available and the AWS's 
 
 ## Requisites
 
-- Python 3.6
-- boto3 package
+- Python > 3.6
+- boto3 python package
+- tqdm python package
 
 To install Python please visit its [Official Website](https://www.python.org/) and simply follow the instructions. The you can install boto3 package with: `pip install -r requirements.txt`. And you're good to go.
 
 ## Running dynasync
 
-Simply issue the command: `python3 main.py`, it will run a setup script and then start monitoring the files you selected.
+Simply issue the command: `./main.py`, it will run a setup script and then start monitoring the files you selected.
 
 ## Meta
 
@@ -25,13 +26,14 @@ Distributed under The BSD3-clause license. See [LICENSE](LICENSE) for more infor
 
 ### Current work
 
-- Adding support for larger files and more than one folder.
+- Adding support for more than one folder tracking
 
 ### To-do
 
 There are lots of things to do, the ones in my mind now are listed below.
 
-- Create a nice user interface for configuring the tool.
+- Create a nice user interface for configuring the tool
+- Make it possible to use in more than one computer at the same time
 
 ### Contributing
 
