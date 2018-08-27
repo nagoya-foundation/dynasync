@@ -109,7 +109,7 @@ def get_file(table, root, file, chunks):
             exit()
 
         except:
-            print("Chunk " + chunks[i] +  " not found!")
+            print("Chunk " + chunks[i] +  " not found, file will not be saved!")
             pass
 
         # Collect chunk's contents
