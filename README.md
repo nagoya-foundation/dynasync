@@ -1,16 +1,17 @@
 # dynasync
 
-> dynasync uses the low-level AWS API to send the files under selected folders to the DynamoDB service. It will send and store it a secure way. So you have versioning for you files for free, since that AWS offers 25GiB DynamoDB storage as a free service.
+> In this branch we use an expoxed API to send the files under selected folders to the DynamoDB service. The program will send or receive files to a lambda function using the API Gateway AWS service and store it a secure way. So you have versioning for your files for free, since that AWS offers 25GiB DynamoDB storage as a free service.
+
+This new version permits multiple conections at the same time, so it is a new step in the development of this helpfull tool.
 
 ## Configuring
 
-First you need an AWS account with the DynamoDB service available and the AWS's credentials in your home folder.
+In this branch you only need you API key from the API Gateway service.
 
 ## Requisites
 
 - Python > 3.6
-- boto3 python package
-- tqdm python package
+- pip
 
 To install Python please visit its [Official Website](https://www.python.org/) and simply follow the instructions. The you can install boto3 package with: `pip install -r requirements.txt`. And you're good to go.
 
@@ -21,19 +22,20 @@ Simply issue the command: `./main.py`, it will run a setup script and then start
 ## Meta
 
 Created by: Brian Mayer - bleemayer@gmail.com	
-Initial commit: May, 15, 2018
+Initial commit: August, 27, 2018
 Distributed under The BSD3-clause license. See [LICENSE](LICENSE) for more information.
 
 ### Current work
 
+- Creating the back-end lambda function
 - Adding support for more than one folder tracking
 
 ### To-do
 
 There are lots of things to do, the ones in my mind now are listed below.
 
-- Create a nice user interface for configuring the tool
-- Make it possible to use in more than one computer at the same time
+- Create o front-end program
+- Create a nice user interface for configuring the front-end
 
 ### Contributing
 
