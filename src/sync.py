@@ -116,8 +116,8 @@ def get_file(table, root, file, chunks):
         content += new_file['Item']['content'].value
 
         # Wait based on consumed capacity
-        if new_file['ConsumedCapacity']['CapacityUnits'] > 15:
-            time.sleep(new_file['ConsumedCapacity']['CapacityUnits']/15)
+        if new_file['ConsumedCapacity']['CapacityUnits'] > 10:
+            time.sleep(new_file['ConsumedCapacity']['CapacityUnits']/40)
 
     # Write file to disk
     os.makedirs(os.path.dirname(os.path.join(root, file)), exist_ok=True)
