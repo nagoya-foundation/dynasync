@@ -28,7 +28,7 @@ if not os.path.exists(config_dir):
 config_file = config_dir + "/dynasync.conf"
 if not os.path.exists(config_file) or args.reconf:
     # Get configuration parameters from user and write to file
-    print("Creating configuration file.")
+    print("Creating configuration file...")
     track_dirs = input("Enter directory to track:")
     dyna_table = input("Enter DynamoDB table name:")
     with open(config_file, 'w') as file:
@@ -39,7 +39,7 @@ with open(config_file, 'r') as file:
     track_dirs = configs['dir']
     dyna_table = configs['table']
 
-print("Configuration finished!\nChecking if it is valid.")
+# Check if cofigured dir exists
 if not os.path.exists(os.path.expanduser(track_dirs)):
     print("Entered directory does not exists! Program will fail.")
     exit(-1)
