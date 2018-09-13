@@ -21,7 +21,7 @@ Simply issue the command: `./main.py`, it will run a setup script and then start
 
 ## Meta
 
-Created by: Brian Mayer - bleemayer@gmail.com	
+Created by: Brian Mayer - bleemayer@gmail.com
 Initial commit: August, 27, 2018
 Distributed under The BSD3-clause license. See [LICENSE](LICENSE) for more information.
 

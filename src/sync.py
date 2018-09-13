@@ -19,8 +19,15 @@ def send_file(table, index, root, file):
     fpath = os.path.join(root, file)
 
     # Verify file size
-    if os.path.getsize(fpath) > 104857600:
-        print("File " + file + " is too large (> 100 MiB), skipping...")
+    # The theoretical size limit is 209653760 bytes, this comes from:
+    # Each item in the index table has about 120 bytes, considering 0 chunks,
+    # each chunk hash adds 64 bytes, the item size limit is 400KiB set by AWS,
+    # so 120 + 64x = 400*1024. Solving the equation gives 6398.125 chunks, as
+    # each chunk contains 32KiB of the file, we multiply, and the file size is
+    # 199.9375MiB, roughfly 200MiB, and that is compressed size, so it's OK to
+    # round it up.
+    if os.path.getsize(fpath) > 209715200:
+        print("File " + file + " is too large (> 200MiB), skipping...")
         return 0
 
     # Get modification time for update_index
@@ -29,16 +36,15 @@ def send_file(table, index, root, file):
     # Open file and compress its contents
     with open(fpath, 'rb') as file_con:
         fileBytes = file_con.read()
-        content = lzma.compress(fileBytes)
 
-    # Send content in pieces of 256KiB
-    chunks = math.ceil(len(content)/262144)
+    # Send content in pieces of 32KiB
+    chunks = math.ceil(len(fileBytes)/32768)
     hashes = []
     ck = 0
     for ck in tqdm.trange(chunks, ascii=True, desc="Sending " + os.path.basename(file)):
-        # Send the chunk and its sha1
-        chunk = content[ck*262144:(ck + 1)*262144]
-        hash = hashlib.sha1(chunk).hexdigest()
+        # Send the chunk and its sha256
+        chunk = fileBytes[ck*32768:(ck + 1)*32768]
+        hash = hashlib.sha256(chunk).hexdigest()
         hashes.append(hash)
         ck += 1
 
@@ -47,7 +53,7 @@ def send_file(table, index, root, file):
             new_item = table.put_item(
                 Item = {
                     'chunkid': hash,
-                    'content': chunk
+                    'content': lzma.compress(chunk)
                 },
                 ConditionExpression = 'attribute_not_exists(chunkid)',
                 ReturnConsumedCapacity = 'TOTAL'
@@ -97,22 +103,22 @@ def get_file(table, root, file, chunks):
     content = b''
 
     # Get each chunk
-    for i in tqdm.trange(len(chunks), ascii=True, desc="Getting " + os.path.basename(file)):
+    for chunk in tqdm.trange(chunks, ascii=True, desc="Getting " + os.path.basename(file)):
         try:
             new_file = table.get_item(
                 Key = {
-                    'chunkid': chunks[i]
+                    'chunkid': chunk
                 },
                 ReturnConsumedCapacity = 'TOTAL'
             )
             # Collect chunk's contents
-            content += new_file['Item']['content'].value
+            content += lzma.decompress(new_file['Item']['content'].value)
 
         except KeyboardInterrupt:
             exit()
 
         except:
-            print("Chunk " + chunks[i] + " not found, file will not be saved!")
+            print("Chunk " + chunk + " not found, file will not be saved!")
             return
 
         # Wait based on consumed capacity
@@ -123,12 +129,12 @@ def get_file(table, root, file, chunks):
     os.makedirs(os.path.dirname(os.path.join(root, file)), exist_ok=True)
     with open(os.path.join(root, file), 'wb') as file_df:
         try:
-            file_df.write(lzma.decompress(content))
-        finally:
-            file_df.close()
+            file_df.write(content)
         except IOError as error:
             print("Error writing file:", error)
             abort()
+        finally:
+            file_df.close()
 
 # Get all files under the selected dir
 def collect_files(root_dir, dir, files):
