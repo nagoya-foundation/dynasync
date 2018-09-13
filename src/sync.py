@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------------- #
 # Function definitions for dynasync
-# 
-# Copyright Nagoya Foundation 
+#
+# Copyright Nagoya Foundation
 # --------------------------------------------------------------------------- #
 
 from decimal import *
@@ -26,7 +26,7 @@ def send_file(table, index, root, file):
     # Get modification time for update_index
     mtime = os.path.getmtime(fpath)
 
-    # Open file and compress its contents 
+    # Open file and compress its contents
     with open(fpath, 'rb') as file_con:
         fileBytes = file_con.read()
         content = lzma.compress(fileBytes)
@@ -105,25 +105,30 @@ def get_file(table, root, file, chunks):
                 },
                 ReturnConsumedCapacity = 'TOTAL'
             )
+            # Collect chunk's contents
+            content += new_file['Item']['content'].value
+
         except KeyboardInterrupt:
             exit()
 
         except:
-            print("Chunk " + chunks[i] +  " not found, file will not be saved!")
-            pass
-
-        # Collect chunk's contents
-        content += new_file['Item']['content'].value
+            print("Chunk " + chunks[i] + " not found, file will not be saved!")
+            return
 
         # Wait based on consumed capacity
-        if new_file['ConsumedCapacity']['CapacityUnits'] > 10:
-            time.sleep(new_file['ConsumedCapacity']['CapacityUnits']/40)
+        if new_file['ConsumedCapacity']['CapacityUnits'] > 20:
+            time.sleep(new_file['ConsumedCapacity']['CapacityUnits']/20)
 
     # Write file to disk
     os.makedirs(os.path.dirname(os.path.join(root, file)), exist_ok=True)
     with open(os.path.join(root, file), 'wb') as file_df:
-        file_df.write(lzma.decompress(content))
-        file_df.close()
+        try:
+            file_df.write(lzma.decompress(content))
+        finally:
+            file_df.close()
+        except IOError as error:
+            print("Error writing file:", error)
+            abort()
 
 # Get all files under the selected dir
 def collect_files(root_dir, dir, files):
@@ -175,8 +180,8 @@ def init(dyna_table, dyna_index, track_dirs):
     # Keep scanning until all results are received
     while 'LastEvaluatedKey' in scan_result.keys():
         # Wait if needed
-        if scan_result['ConsumedCapacity']['CapacityUnits'] > 10:
-            time.sleep(scan_result['ConsumedCapacity']['CapacityUnits']/10)
+        if scan_result['ConsumedCapacity']['CapacityUnits'] > 5:
+            time.sleep(scan_result['ConsumedCapacity']['CapacityUnits']/5)
 
         # Scan from the last result
         scan_result = dyna_index.scan(
@@ -213,6 +218,8 @@ def init(dyna_table, dyna_index, track_dirs):
     # Download remote only files
     for file in set(remote_files) - set(local_files):
         get_file(dyna_table, paths, file, rems[file]['chunks'])
+
+    print("Got all remote files.")
 
     # Insert modified files in the remote table
     for file in local_files:
