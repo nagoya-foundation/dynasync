@@ -21,7 +21,8 @@ import sync
 # ---- Connect to DynamoDB -------------------------------------------------- #
 
 print("Connecting to AWS...")
-dynamo = boto3.resource("dynamodb")
+session = boto3.Session(profile_name='blmayer')
+dynamo = session.resource("dynamodb")
 
 # Check remote table existence
 table_list = [table.name for table in dynamo.tables.all()]
