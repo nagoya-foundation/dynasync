@@ -30,6 +30,11 @@ def send_file(table, index, root, file):
         print("File " + file + " is too large (> 200MiB), skipping...")
         return 0
 
+    # Zero length files may corrupt good files
+    if os.path.getsize(fpath) == 0:
+        print(fpath + " has 0 length and will not be sent.")
+        return
+
     # Get modification time for update_index
     mtime = os.path.getmtime(fpath)
 
@@ -41,7 +46,10 @@ def send_file(table, index, root, file):
     chunks = math.ceil(len(fileBytes)/32768)
     hashes = []
     ck = 0
-    for ck in tqdm.trange(chunks, ascii=True, desc="Sending " + os.path.basename(file)):
+    for ck in tqdm.trange(chunks, ascii=True, desc=os.path.basename(file)):
+        # Start the clock
+        start = time.time()
+
         # Send the chunk and its sha256
         chunk = fileBytes[ck*32768:(ck + 1)*32768]
         hash = hashlib.sha256(chunk).hexdigest()
@@ -60,14 +68,20 @@ def send_file(table, index, root, file):
             )
 
             # Wait a sec to preserve throughput
-            if new_item['ConsumedCapacity']['CapacityUnits'] > 24:
-                time.sleep(new_item['ConsumedCapacity']['CapacityUnits']/24)
+            consumed = new_item['ConsumedCapacity']['CapacityUnits']/23 \
+                - time.time() + start
+
+            if consumed > 0:
+                time.sleep(consumed)
+
+        except KeyboardInterrupt:
+            exit()
 
         except:
             pass
 
-        # Update index regardless of the size
-        update_index(table, index, file, hashes, mtime)
+    # Update index regardless of the size
+    update_index(table, index, file, hashes, mtime)
 
 def update_index(table, index, file, chunk_list, mtime):
     index.update_item(
@@ -103,7 +117,8 @@ def get_file(table, root, file, chunks):
     content = b''
 
     # Get each chunk
-    for chunk in tqdm.trange(chunks, ascii=True, desc="Getting " + os.path.basename(file)):
+    for chunk in tqdm.trange(chunks, ascii=True, desc=os.path.basename(file)):
+        start = time.time()
         try:
             new_file = table.get_item(
                 Key = {
@@ -122,8 +137,16 @@ def get_file(table, root, file, chunks):
             return
 
         # Wait based on consumed capacity
-        if new_file['ConsumedCapacity']['CapacityUnits'] > 20:
-            time.sleep(new_file['ConsumedCapacity']['CapacityUnits']/20)
+        consumed = new_file['ConsumedCapacity']['CapacityUnits']/20 \
+            - time.time() + start
+
+        if consumed > 0:
+            time.sleep(consumed)
+
+    # Zero length files may corrupt good files
+    if len(content) == 0:
+        print(file + " has zero length and will not be saved.")
+        return
 
     # Write file to disk
     os.makedirs(os.path.dirname(os.path.join(root, file)), exist_ok=True)
@@ -165,7 +188,6 @@ def init(dyna_table, dyna_index, track_dirs):
 
     # Get remote tracked files
     print("Querying files in remote table.")
-    file_count = 0
     scan_result = dyna_index.scan(
         ExpressionAttributeNames = {
             '#fp': 'filepath',
@@ -181,7 +203,7 @@ def init(dyna_table, dyna_index, track_dirs):
         ReturnConsumedCapacity = 'TOTAL'
     )
     table_files = scan_result['Items']
-    file_count += scan_result['Count']
+    file_count = scan_result['Count']
 
     # Keep scanning until all results are received
     while 'LastEvaluatedKey' in scan_result.keys():
