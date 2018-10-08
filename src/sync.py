@@ -19,14 +19,13 @@ def send_file(table, index, root, file):
     fpath = os.path.join(root, file)
 
     # Verify file size
-    # The theoretical size limit is 209653760 bytes, this comes from:
+    # The theoretical size limit is 204738560 bytes, this comes from:
     # Each item in the index table has about 120 bytes, considering 0 chunks,
-    # each chunk hash adds 64 bytes, the item size limit is 400KiB set by AWS,
-    # so 120 + 64x = 400*1024. Solving the equation gives 6398.125 chunks, as
+    # each chunk hash adds 64 bytes, the item size limit is 400KB set by AWS,
+    # so 120 + 64x = 400*1000. Solving the equation gives 6248.125 chunks, as
     # each chunk contains 32KiB of the file, we multiply, and the file size is
-    # 199.9375MiB, roughfly 200MiB, and that is compressed size, so it's OK to
-    # round it up.
-    if os.path.getsize(fpath) > 209715200:
+    # 204738560KiB, roughly 200MiB.
+    if os.path.getsize(fpath) > 204738560:
         print("File " + file + " is too large (> 200MiB), skipping...")
         return 0
 
