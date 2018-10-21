@@ -13,7 +13,7 @@ import argparse
 
 print("Dynasync starting " + time.ctime())
 parser = argparse.ArgumentParser()
-parser.add_argument("--reconf", help = "call configure", action = "store_true")
+parser.add_argument("--reconf", help="call configure", action="store_true")
 args = parser.parse_args()
 
 # ---- Configure ------------------------------------------------------------ #
@@ -29,15 +29,26 @@ config_file = config_dir + "/dynasync.conf"
 if not os.path.exists(config_file) or args.reconf:
     # Get configuration parameters from user and write to file
     print("Creating configuration file...")
+    profile = input("Enter the AWS profile name to use: (default)")
     track_dirs = input("Enter directory to track:")
     dyna_table = input("Enter DynamoDB table name:")
+
+    if profile == "":
+        profile = "default"
+
     with open(config_file, 'w') as file:
-        file.write(json.dumps({'dir': track_dirs, 'table': dyna_table}))
+        file.write(json.dumps({
+            'dir': track_dirs,
+            'table': dyna_table,
+            'profile': profile
+            })
+        )
 
 with open(config_file, 'r') as file:
-    configs = json.load(file)
-    track_dirs = configs['dir']
-    dyna_table = configs['table']
+    __configs = json.load(file)
+    track_dirs = __configs['dir']
+    dyna_table = __configs['table']
+    profile = __configs['profile']
 
 # Check if cofigured dir exists
 if not os.path.exists(os.path.expanduser(track_dirs)):

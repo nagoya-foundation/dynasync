@@ -9,8 +9,8 @@
 #  DESCRIPTION: Main file for dynasync, it uses the AWS low-level API to make
 #  requests to DynamoDB. We try to make it as efficient as possible with the
 #  help of hashing and modification time to only synchronize new files.
-# 
-# Copyright Nagoya Foundation 
+#
+# Copyright Nagoya Foundation
 # --------------------------------------------------------------------------- #
 
 import time
@@ -21,7 +21,7 @@ import sync
 # ---- Connect to DynamoDB -------------------------------------------------- #
 
 print("Connecting to AWS...")
-session = boto3.Session(profile_name='blmayer')
+session = boto3.Session(profile_name=config.profile)
 dynamo = session.resource("dynamodb")
 
 # Check remote table existence
@@ -100,7 +100,7 @@ try:
     sync.init(dyna_table, dyna_index, config.track_dirs)
 
     # Keep walking
-    print("Synchronized, watching for changes...") 
+    print("Synchronized, watching for changes...")
     sync.watch(dyna_table, dyna_index, config.track_dirs)
 except KeyboardInterrupt:
     print('Interrupted by user. Exiting program...')
