@@ -83,7 +83,10 @@ def send_file(table, index, root, file):
     update_index(table, index, file, hashes, mtime)
 
 def update_index(table, index, file, chunk_list, mtime):
-    index.update_item(
+    # Start the clock
+    start = time.time()
+
+    updated_index = index.update_item(
         Key = {
             'dyna_table': table.name,
             'filepath': file
@@ -93,8 +96,16 @@ def update_index(table, index, file, chunk_list, mtime):
             ':r': Decimal(mtime),
             ':s': False,
             ':cl': chunk_list
-        }
+        },
+        ReturnConsumedCapacity = 'TOTAL'
     )
+
+    # Wait a sec to preserve throughput
+    consumed = updated_index['ConsumedCapacity']['CapacityUnits'] \
+        - time.time() + start
+
+    if consumed > 0:
+        time.sleep(consumed)
 
 def set_deleted(table, index, file, mtime):
     print("File " + file + " deleted, updating.")
