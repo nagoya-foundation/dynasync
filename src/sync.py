@@ -19,14 +19,13 @@ def send_file(table, index, root, file):
     fpath = os.path.join(root, file)
 
     # Verify file size
-    # The theoretical size limit is 204738560 bytes, this comes from:
-    # Each item in the index table has about 120 bytes, considering 0 chunks,
+    # Each item in the index table has about 124 bytes, considering 0 chunks,
     # each chunk hash adds 64 bytes, the item size limit is 400KB set by AWS,
-    # so 120 + 64x = 400*1000. Solving the equation gives 6248.125 chunks, as
-    # each chunk contains 32KiB of the file, we multiply, and the file size is
-    # 204738560KiB, roughly 200MiB.
-    if os.path.getsize(fpath) > 204738560:
-        print("File " + file + " is too large (> 200MiB), skipping...")
+    # so 124 + 64x = 400*1000. Solving the equation gives 6248.0625 chunks,
+    # as each chunk contains the maximum of 399.869 bytes of the file, so we
+    # multiply, and the file size is 2.498.406.503,8125 bytes, roughly 2.5GB.
+    if os.path.getsize(fpath) > 2498406503:
+        print("File " + file + " is too large (> 2,5 GB), skipping...")
         return 0
 
     # Zero length files may corrupt good files
@@ -41,16 +40,16 @@ def send_file(table, index, root, file):
     with open(fpath, 'rb') as file_con:
         fileBytes = file_con.read()
 
-    # Send content in pieces of 32KiB
-    chunks = math.ceil(len(fileBytes)/32768)
+    # Send content in pieces of 399.869 bytes
+    chunks = math.ceil(len(fileBytes)/399869)
     hashes = []
     ck = 0
     for ck in tqdm.trange(chunks, ascii=True, desc=os.path.basename(file)):
         # Start the clock
         start = time.time()
 
-        # Send the chunk and its sha256
-        chunk = fileBytes[ck*32768:(ck + 1)*32768]
+        # Send the chunk and its SHA256
+        chunk = fileBytes[ck*399869:(ck + 1)*399869]
         hash = hashlib.sha256(chunk).hexdigest()
         hashes.append(hash)
         ck += 1
