@@ -33,6 +33,10 @@ if not os.path.exists(config_file) or args.reconf:
     track_dirs = input("Enter directory to track:")
     dyna_table = input("Enter DynamoDB table name:")
 
+    if track_dirs == "" or dyna_table == "":
+        print("You must enter a table name and a directory to track")
+        exit(1)
+        
     if profile == "":
         profile = "default"
 
