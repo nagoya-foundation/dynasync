@@ -11,15 +11,22 @@ func showHelp() {
 	fmt.Println("Usage: dynasync [command] file ...")
 	fmt.Println("")
 	fmt.Println("Options for command are:")
-	fmt.Println(" init:	create configuration file")
+	fmt.Println(" init:		create configuration file")
 	fmt.Println(" commit")
 	fmt.Println(" tag")
+	fmt.Println("")
+	fmt.Println("Optional parameters for init:")
+	fmt.Println(" name:		set the repo name for name")
+	fmt.Println("")
+	fmt.Println("Needed parameters for commit:")
+	fmt.Println(" file:		file to be sent to repository")
+	fmt.Println(" -m message:	commit message")
 }
 
-func initConfig(name string) {
+func initConfig(args []string) {
 	dirPath, _ := os.Getwd()
 	dir := filepath.Base(dirPath)
-	configFile, err := os.Open(dirPath + "/proj.conf")
+	configFile, err := os.Open(dirPath + "/.sync.conf")
 	configFile.Close()
 
 	if err == nil {
@@ -27,13 +34,13 @@ func initConfig(name string) {
 		return
 	}
 
-	configFile, err = os.Create(dirPath + "/proj.conf")
+	configFile, err = os.Create(dirPath + "/.sync.conf")
 	if err != nil {
 		panic("Error creating config file")
 	}
 
-	if name != "" {
-		_, err = configFile.Write([]byte("repo: " + name + "\n"))
+	if len(args) > 1 {
+		_, err = configFile.Write([]byte("repo: " + args[1] + "\n"))
 	} else {
 		_, err = configFile.Write([]byte("repo: " + dir + "\n"))
 	}
@@ -63,13 +70,11 @@ func main() {
 			showHelp()
 			break
 		case "init":
-			i++
-			if i < argLen {
-				initConfig(os.Args[i])
-			} else {
-				initConfig("")
-			}
-			break
+			initConfig(os.Args[i:])
+			return
+		case "commit":
+			commit(os.Args[i:])
+			return
 		default:
 			fmt.Println("Error: illegal option", os.Args[i])
 			showHelp()
