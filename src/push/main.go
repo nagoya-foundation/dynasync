@@ -57,7 +57,7 @@ func initConfig(args []string) {
 	}
 
 	// Create .sync/repo.conf file
-	configFile, err := os.Open(SYNCPATH + "/repo.conf")
+	configFile, err := os.Open(SYNCPATH + "repo.conf")
 	configFile.Close()
 
 	if err == nil {
@@ -65,7 +65,7 @@ func initConfig(args []string) {
 		return
 	}
 
-	configFile, err = os.Create(SYNCPATH + "/repo.conf")
+	configFile, err = os.Create(SYNCPATH + "repo.conf")
 	if err != nil {
 		panic("Error creating config file")
 	}
@@ -84,10 +84,10 @@ func initConfig(args []string) {
 }
 
 func main() {
-	// Keep track of the repo path 
+	// Keep track of the repo path
 	REPOPATH, _ = os.Getwd()
-	SYNCPATH = REPOPATH + "/.sync"
-	DIFFPATH = SYNCPATH + "/diff"
+	SYNCPATH = REPOPATH + "/.sync/"
+	DIFFPATH = SYNCPATH + "/diff/"
 
 	if len(os.Args) == 1 {
 		fmt.Println("Dynasync v1.0.0: A very simple version control system")
@@ -117,3 +117,4 @@ func main() {
 		}
 	}
 }
+
