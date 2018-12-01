@@ -3,34 +3,51 @@ package main
 import (
 	"fmt"
 	"os"
-	//"github.com/sergi/go-diff/diffmatchpatch"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 func diff(files []string) {
 	// Backup each committed file
 	for _, file := range(files) {
 		fmt.Println("Preparing file " + file + " to commit")
-		_, err := os.Stat(DIFFPATH + "/file-" + file + ".diff")
+		diffFile := DIFFPATH + file + ".orig"
+		diffInfo, errDiff := os.Stat(diffFile)
+		fileInfo, errInfo := os.Stat(file)
+		fileConn, errFile := os.Open(file)
+
+		if errInfo != nil || errFile != nil {
+			panic("Error reading file to commit")
+		}
+
+		content := make([]byte, fileInfo.Size())
+		fileConn.Read(content)
+		fileConn.Close()
+
+		diffConn, err := os.OpenFile(diffFile, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			panic("Error creating diff file")
+		}
 
 		// First time committing this file?
+		if errDiff == nil {
+			// No, read content and create a patch
+			diffContent := make([]byte, diffInfo.Size())
+			diffConn.Read(diffContent)
+
+			dmp := diffmatchpatch.New()
+			patches := dmp.PatchMake(string(diffContent), string(content))
+			diff := dmp.PatchToText(patches)
+			fmt.Println(diff)
+
+			diffConn.Truncate(0)
+
+		}
+
+		_, err = diffConn.WriteAt(content, 0)
+		diffConn.Close()
+
 		if err != nil {
-			// Yes, backup the whole file
-			origInfo, err := os.Stat(file)
-			origFile, err := os.Open(file)
-			content := make([]byte, origInfo.Size())
-			_, err = origFile.Read(content)
-
-			if err != nil {
-				panic("Error reading file to commit")
-			}
-
-			diffFile, err := os.Create(DIFFPATH + "/file-" + file + ".orig")
-			_, err = diffFile.Write(content)
-
-			if err != nil {
-				panic("Error copying file to diff folder")
-			}
-			fmt.Println("File backed up")
+			panic("Error writing diff file")
 		}
 	}
 }
@@ -61,3 +78,4 @@ func commit(args []string) {
 
 	return
 }
+
