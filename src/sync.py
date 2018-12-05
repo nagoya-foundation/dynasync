@@ -61,16 +61,12 @@ def send_file(table, index, root, file):
                     'chunkid': hash,
                     'content': lzma.compress(chunk)
                 },
-                ConditionExpression = 'attribute_not_exists(chunkid)',
-                ReturnConsumedCapacity = 'TOTAL'
+                ConditionExpression = 'attribute_not_exists(chunkid)'
             )
 
             # Wait a sec to preserve throughput
-            consumed = new_item['ConsumedCapacity']['CapacityUnits']/23 \
-                - time.time() + start
-
-            if consumed > 0:
-                time.sleep(consumed)
+            if len(chunk)/(4000*24*(time.time() - start)) - 1 > 0:
+                time.sleep(len(chunk)/(4000*24*(time.time() - start)) - 1)
 
         except KeyboardInterrupt:
             exit()
