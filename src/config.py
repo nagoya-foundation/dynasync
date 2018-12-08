@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Dynasync condfiguration file. Read or write configs and connect to the given
+# Dynasync configuration file. Read or write configs and connect to the given
 # DynamoDB table
 # -------------------------------------------------------------------------- #
 
@@ -36,7 +36,7 @@ if not os.path.exists(config_file) or args.reconf:
     if track_dirs == "" or dyna_table == "":
         print("You must enter a table name and a directory to track")
         exit(1)
-        
+
     if profile == "":
         profile = "default"
 
@@ -52,9 +52,9 @@ with open(config_file, 'r') as file:
     __configs = json.load(file)
     track_dirs = __configs['dir']
     dyna_table = __configs['table']
-    profile = __configs['profile']
+    profile = __configs.get('profile', 'default')
 
-# Check if cofigured dir exists
+# Check if configured dir exists
 if not os.path.exists(os.path.expanduser(track_dirs)):
     print("Entered directory does not exists! Program will fail.")
     exit(-1)
