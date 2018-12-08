@@ -29,6 +29,21 @@ func showHelp() {
 	fmt.Println(" -m message:	commit message")
 }
 
+func findConfig() {
+	// Try to find the config folder in parent folders
+	for REPOPATH != "/" {
+		_, err := os.Stat(REPOPATH + "/.sync/")
+		if err == nil {
+			SYNCPATH = REPOPATH + "/.sync/"
+			DIFFPATH = SYNCPATH + "diff/"
+			return
+		}
+		REPOPATH = filepath.Dir(REPOPATH)
+	}
+
+	panic("diff dir not found, make sure you ran init first")
+}
+
 func initConfig(args []string) {
 	// Create .sync dir
 	configDir, err := os.Open(SYNCPATH)
@@ -87,7 +102,7 @@ func main() {
 	// Keep track of the repo path
 	REPOPATH, _ = os.Getwd()
 	SYNCPATH = REPOPATH + "/.sync/"
-	DIFFPATH = SYNCPATH + "/diff/"
+	DIFFPATH = SYNCPATH + "diff/"
 
 	if len(os.Args) == 1 {
 		fmt.Println("Dynasync v1.0.0: A very simple version control system")
@@ -109,10 +124,11 @@ func main() {
 			initConfig(os.Args[i + 1:])
 			return
 		case "commit":
+			findConfig()
 			commit(os.Args[i + 1:])
 			return
 		default:
-			fmt.Println("Error: illegal option", arg)
+			fmt.Println("error: illegal option", arg)
 			showHelp()
 		}
 	}
