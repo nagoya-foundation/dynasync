@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"encoding/base64"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -10,12 +11,12 @@ func diff(files []string) {
 	// Backup each committed file
 	for _, file := range(files) {
 		fmt.Println("preparing file " + file + " to commit")
-		diffFile := DIFFPATH + file + ".orig"
+		diffFile := DIFFPATH + base64.StdEncoding.EncodeToString([]byte(file))
 		diffInfo, errDiff := os.Stat(diffFile)
-		fileInfo, errInfo := os.Stat(file)
+		fileInfo, _ := os.Stat(file)
 		fileConn, errFile := os.Open(file)
 
-		if errInfo != nil || errFile != nil {
+		if errFile != nil {
 			panic("error reading file to commit")
 		}
 
@@ -35,9 +36,12 @@ func diff(files []string) {
 			diffConn.Read(diffContent)
 
 			dmp := diffmatchpatch.New()
+			fmt.Println("creating diff...")
 			patches := dmp.PatchMake(string(diffContent), string(content))
 			diff := dmp.PatchToText(patches)
+			fmt.Println("done")
 			// TODO: Send patch to DynamoDB
+			fmt.Println(diff)
 
 			diffConn.Truncate(0)
 		} else {
@@ -54,12 +58,6 @@ func diff(files []string) {
 }
 
 func commit(args []string) {
-	_, err := os.Stat(DIFFPATH)
-	if err != nil {
-		fmt.Println("diff dir not found, make sure you ran init first")
-		return
-	}
-
 	for i := range(args) {
 		if string(args[i]) == "-m" {
 			if i + 1 < len(args) {
@@ -67,14 +65,14 @@ func commit(args []string) {
 				fmt.Println("commited file(s)", args[1:i])
 				fmt.Println("with message", args[i + 1])
 			} else {
-				fmt.Println("Error: Missing message parameter")
+				fmt.Println("error: Missing message parameter")
 				showHelp()
 			}
 			return
 		}
 	}
 
-	fmt.Println("Error: Missing parameters")
+	fmt.Println("error: Missing parameters")
 	showHelp()
 
 	return
