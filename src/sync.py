@@ -122,12 +122,12 @@ def get_file(table, root, file, chunks):
     content = b''
 
     # Get each chunk
-    for chunk in tqdm.trange(chunks, ascii=True, desc=os.path.basename(file)):
+    for i in tqdm.tqdm(range(len(chunks)), ascii=True, desc=os.path.basename(file)):
         start = time.time()
         try:
             new_file = table.get_item(
                 Key = {
-                    'chunkid': chunk
+                    'chunkid': chunks[i]
                 },
                 ReturnConsumedCapacity = 'TOTAL'
             )
@@ -138,7 +138,7 @@ def get_file(table, root, file, chunks):
             exit()
 
         except:
-            print("Chunk " + chunk + " not found, file will not be saved!")
+            print("Chunk " + chunks[i] + " not found, file will not be saved!")
             return
 
         # Wait based on consumed capacity
