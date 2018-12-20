@@ -31,9 +31,9 @@ if not os.path.exists(config_file) or args.reconf:
     print("Creating configuration file...")
     profile = input("Enter the AWS profile name to use: (default)")
     track_dirs = input("Enter directory to track:")
-    dyna_table = input("Enter DynamoDB table name:")
+    collectionName = input("Enter collection name:")
 
-    if track_dirs == "" or dyna_table == "":
+    if track_dirs == "":
         print("You must enter a table name and a directory to track")
         exit(1)
 
@@ -42,16 +42,16 @@ if not os.path.exists(config_file) or args.reconf:
 
     with open(config_file, 'w') as file:
         file.write(json.dumps({
-            'dir': track_dirs,
-            'table': dyna_table,
-            'profile': profile
+            'dir':        track_dirs,
+            'collection': collectionName,
+            'profile':    profile
             })
         )
 
 with open(config_file, 'r') as file:
     __configs = json.load(file)
     track_dirs = __configs['dir']
-    dyna_table = __configs['table']
+    collectionName = __configs['collection']
     profile = __configs.get('profile', 'default')
 
 # Check if configured dir exists
