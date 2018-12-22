@@ -13,23 +13,25 @@
 #  Copyright Nagoya Foundation
 # --------------------------------------------------------------------------- #
 
-import time
 import boto3
 import math
 import os
-import hashlib
 import lzma
 import tqdm
 import config
+from time import time, sleep
+from hashlib import md5
 from decimal import *
 
 # ==== Connect to DynamoDB ====================================================
 
+# TODO: use try-catch
 print("Connecting to AWS...")
 session = boto3.Session(profile_name=config.profile)
 dynamo = session.resource("dynamodb")
 
 # Check remote table existence
+# TODO: use try-catch
 tableList = [table.name for table in dynamo.tables.all()]
 if 'dynasync' not in tableList:
     print("Remote table not found, creating one...")
@@ -56,9 +58,10 @@ if 'dynasync' not in tableList:
         }
     )
     print("Table created. Wait a little.")
-    time.sleep(5)
+    sleep(5)
 
 # Now check index table existence
+# TODO: use try-catch
 if 'dynasyncIndex' not in tableList:
     print("Creating index table.")
     dynamo.create_table(
@@ -92,18 +95,26 @@ if 'dynasyncIndex' not in tableList:
         }
     )
     print("Index table created. Wait a little.")
-    time.sleep(5)
+    sleep(5)
 
 # Table resources
 index = dynamo.Table('dynasyncIndex')
 table = dynamo.Table('dynasync')
 
+# Global variables
+track_dirs = os.path.expanduser(config.track_dirs)
+
 # ==== Function definitions ============================+++++==================
 
 # Send a file to remote table
-def sendFile(root, file):
-    # Expand ~ in file path file
-    fpath = os.path.join(root, file)
+def sendFile(file):
+    # Expand ~ in file path
+    file_path = os.path.join(track_dirs, file)
+
+    # Open file and compress its contents
+    with open(file_path, 'rb') as file_con:
+        fileBytes = file_con.read()
+        fileLen = len(fileBytes)
 
     # Verify file size
     # Each item in the index table has about 124 bytes, considering 0 chunks,
@@ -111,33 +122,29 @@ def sendFile(root, file):
     # so 124 + 32x = 400*1000. Solving the equation gives 12496.125 chunks,
     # as each chunk contains the maximum of 399,901 bytes of the file, so we
     # multiply, and the file size is 4.997.212.883,625 bytes, roughly 4.99GB.
-    if os.path.getsize(fpath) > 4997212883:
+    if fileLen > 4997212883:
         print("File " + file + " is too large (> 4,99 GB), skipping...")
         return 0
 
     # Zero length files may corrupt good files
-    if os.path.getsize(fpath) == 0:
-        print(fpath + " has 0 length and will not be sent.")
+    if fileLen == 0:
+        print(file_path + " has 0 length and will not be sent.")
         return
 
     # Get modification time for updateIndex
-    mtime = os.path.getmtime(fpath)
-
-    # Open file and compress its contents
-    with open(fpath, 'rb') as file_con:
-        fileBytes = file_con.read()
+    mtime = os.path.getmtime(file_path)
 
     # Send content in pieces of 399.901 bytes
-    chunks = math.ceil(len(fileBytes)/399901)
+    chunks = math.ceil(fileLen/399901)
     hashes = []
     ck = 0
     for ck in tqdm.trange(chunks, ascii=True, desc=os.path.basename(file)):
         # Start the clock
-        start = time.time()
+        start = time()
 
-        # Send the chunk and its SHA256
+        # Send the chunk and its md5sum
         chunk = fileBytes[ck*399901:(ck + 1)*399901]
-        hash = hashlib.md5(chunk).hexdigest()
+        hash = md5(chunk).hexdigest()
         hashes.append(hash)
         ck += 1
 
@@ -152,8 +159,8 @@ def sendFile(root, file):
             )
 
             # Wait a sec to preserve throughput
-            if len(chunk)/(4000*24*(time.time() - start)) - 1 > 0:
-                time.sleep(len(chunk)/(4000*24*(time.time() - start)) - 1)
+            if len(chunk)/(4000*24*(time() - start)) - 1 > 0:
+                sleep(len(chunk)/(4000*24*(time() - start)) - 1)
 
         except KeyboardInterrupt:
             exit()
@@ -166,8 +173,9 @@ def sendFile(root, file):
 
 def updateIndex(file, chunkList, mtime):
     # Start the clock
-    start = time.time()
+    start = time()
 
+    # TODO: use try-catch
     newIndex = index.put_item(
         Item = {
             'filePath': file,
@@ -179,13 +187,14 @@ def updateIndex(file, chunkList, mtime):
     )
 
     # Wait a sec to preserve throughput
-    consu = newIndex['ConsumedCapacity']['CapacityUnits'] - time.time() + start
+    consu = newIndex['ConsumedCapacity']['CapacityUnits'] - time() + start
 
     if consu > 0:
-        time.sleep(consu)
+        sleep(consu)
 
 def setDeleted(file, mtime):
     print("File " + file + " deleted, updating.")
+    # TODO: use try-catch
     index.put_item(
         Item = {
             'filePath': file,
@@ -194,14 +203,17 @@ def setDeleted(file, mtime):
         }
     )
 
-def getFile(root, file, chunks):
+def getFile(file, chunks):
+
+    # Expand ~ in file path
+    file_path = os.path.join(os.path.expanduser(track_dirs), file)
 
     # Initialize empty file contents variable
     content = b''
 
     # Get each chunk
     for i in tqdm.tqdm(range(len(chunks)), ascii=True, desc=os.path.basename(file)):
-        start = time.time()
+        start = time()
         try:
             new_file = table.get_item(
                 Key = {
@@ -220,20 +232,14 @@ def getFile(root, file, chunks):
             return
 
         # Wait based on consumed capacity
-        consumed = new_file['ConsumedCapacity']['CapacityUnits']/20 \
-            - time.time() + start
+        cons = new_file['ConsumedCapacity']['CapacityUnits']/20 - time() + start
 
-        if consumed > 0:
-            time.sleep(consumed)
-
-    # Zero length files may corrupt good files
-    if len(content) == 0:
-        print(file + " has zero length and will not be saved.")
-        return
+        if cons > 0:
+            sleep(cons)
 
     # Write file to disk
-    os.makedirs(os.path.dirname(os.path.join(root, file)), exist_ok=True)
-    with open(os.path.join(root, file), 'wb') as file_df:
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(os.path.join(file_path, file), 'wb') as file_df:
         try:
             file_df.write(content)
         except IOError as error:
@@ -243,161 +249,119 @@ def getFile(root, file, chunks):
             file_df.close()
 
 # Get all files under the selected dir
-def collectFiles(root_dir, dir, files):
+def collectFiles(dir, files):
     # List files in current directory
     dir_files = os.listdir(dir)
 
     # Search through all files
-    # TODO: append modification time information
     for filename in dir_files:
-        filepath = os.path.join(dir, filename)
+        file_path = os.path.join(dir, filename)
 
         # Check if it's a normal file or directory
-        if os.path.isfile(filepath):
-            path = os.path.relpath(filepath, root_dir)
-            files.append(path)
+        if os.path.isfile(file_path):
+            path = os.path.relpath(file_path, track_dirs)
+            files[path] = os.path.getmtime(file_path)
         else:
             # We got a directory, enter it for further processing
-            collectFiles(root_dir, filepath, files)
+            collectFiles(file_path, files)
 
-# Function to initialize local indexes
-def init(track_dirs):
-    paths = os.path.expanduser(track_dirs)
+# TODO: Implement modification time filter as parameter
+def getRemoteFiles():
 
-    # Put all files in a list
-    print("Collecting files under " + track_dirs + "...")
-    local_files = []
-    collectFiles(paths, paths, local_files)
-    print(str(len(local_files)) + " files found.")
+    query = {
+        "ExpressionAttributeNames": {
+            '#fp': 'filePath', '#cl': 'chunks', '#mt': 'mtime'
+        },
+        "ExpressionAttributeValues": {':a': False},
+        "ProjectionExpression": '#fp, #mt, #cl',
+        "FilterExpression": 'deleted = :a',
+        "ReturnConsumedCapacity": 'TOTAL'
+    }
 
-    # Get remote tracked files
     print("Querying files in remote table.")
-    scanResult = index.scan(
-        ExpressionAttributeNames = {
-            '#fp': 'filePath',
-            '#cl': 'chunks',
-            '#mt': 'mtime'
-        },
-        ExpressionAttributeValues = {
-            ':a': False
-        },
-        ProjectionExpression = '#fp, #mt, #cl',
-        FilterExpression = 'deleted = :a',
-        ReturnConsumedCapacity = 'TOTAL'
-    )
+    # TODO: use try-catch
+    scanResult = index.scan(query)
     table_files = scanResult['Items']
-    file_count = scanResult['Count']
 
     # Keep scanning until all results are received
     while 'LastEvaluatedKey' in scanResult.keys():
         # Wait if needed
         if scanResult['ConsumedCapacity']['CapacityUnits'] > 5:
-            time.sleep(scanResult['ConsumedCapacity']['CapacityUnits']/5)
+            sleep(scanResult['ConsumedCapacity']['CapacityUnits']/5)
 
         # Scan from the last result
+        # TODO: use try-catch
         scanResult = index.scan(
-            ExpressionAttributeNames = {
-                '#fp': 'filePath',
-                '#cl': 'chunks',
-                '#mt': 'mtime'
-            },
-            ExpressionAttributeValues = {
-                ':a': False
-            },
-            ProjectionExpression = '#fp, #mt, #cl',
-            FilterExpression = 'deleted = :a',
-            ExclusiveStartKey = scanResult['LastEvaluatedKey'],
-            ReturnConsumedCapacity = 'TOTAL'
+            query,
+            ExclusiveStartKey = scanResult['LastEvaluatedKey']
         )
 
         # Merge all items
         table_files.extend(scanResult['Items'])
-        filecount += scanResult['Count']
 
     # Reformat into a dictionary
-    print(str(file_count) + " items read.")
-    remote_files = []
-    rems = {}
-    for file in range(file_count):
-        remote_files.append(table_files[file]['filePath'])
-        rems[table_files[file]['filePath']] = {
-            'mtime': table_files[file]['mtime'],
-            'chunks': table_files[file]['chunks']
-        }
+    remote_files = {}
+    for fi in table_files:
+        candidate = remote_files.get(fi['filePath'], {'mtime': 0})
+        if candidate['mtime'] < fi['mtime']:
+            remote_files[fi['filePath']] = {
+                'mtime': fi['mtime'],
+                'chunks': fi['chunks']
+            }
 
-    # TODO: compare modified times between local and remote files
 
-    # Download remote only files
-    for file in set(remote_files) - set(local_files):
-        getFile(paths, file, rems[file]['chunks'])
+    return remote_files
 
-    print("Got all remote files.")
+# Function to initialize local indexes
+def sync():
 
-    # Insert modified files in the remote table
-    for file in local_files:
-        f = os.path.join(paths, file)
-        if file not in remote_files or os.path.getmtime(f)>rems[file]['mtime']:
-            sendFile(paths, file)
+    # Put all files in a list
+    local_files = {}
+    collectFiles(track_dirs, local_files)
 
     # Synchronized, now we watch for changes
-
-
-def resolveDiff(root, olds, news, modTime):
-    # Send modified files
-    for file in news:
-        if os.path.getmtime(os.path.join(root, file)) > modTime:
-            sendFile(root, file)
-
-    # Update deleted files
-    for file in set(olds) - set(news):
-        setDeleted(file, modTime)
-
-    # Send new files
-    for file in set(news) - set(olds):
-        sendFile(root, file)
-
-# Keep track of files
-def watch(track_dirs):
-
-    # Recollect files
-    olds = []
-    paths = os.path.expanduser(track_dirs)
-    collectFiles(paths, paths, olds)
-
-    # Loop forever
     while True:
-        # Each round lasts a minimum of 10 seconds
-        roundStart = time.time()
-
-        # Get the biggest mod time
-        modTimes = [os.path.getmtime(os.path.join(paths, x)) for x in olds]
-        if len(modTimes) > 0:
-            maxModTime = max(modTimes)
-        else:
-            maxModTime = 0
+        # Each round lasts a minimum of 20 seconds
+        roundStart = time()
 
         # Recollect files
-        news = []
-        collectFiles(paths, paths, news)
+        # TODO: use try-catch
+        remote_files = getRemoteFiles()
+        new_local_files = {}
+        collectFiles(track_dirs, new_local_files)
 
         # Resolve and send updates
-        resolveDiff(paths, olds, news, maxModTime)
-        olds = news
+        for file in new_local_files:
+            if new_local_files[file] > max(
+                local_files.get(file, 0),
+                remote_files.get(file, {'mtime': 0})['mtime']
+            ):
+                sendFile(file)
+
+        # Update deleted files
+        for file in set(local_files) - set(new_local_files):
+            setDeleted(file, time())
+
+        # Delete files
+        for file in set(remote_files) - set(new_local_files):
+            getFile(track_dirs, file, remote_file[file]['chunks'])
+            print('deleting file ' + file)
+            os.remove(os.path.join(track_dirs, file))
+
+        local_files = new_local_files
 
         # Wait if necessary
-        if time.time() - roundStart < 10:
-            time.sleep(10 - time.time() + roundStart)
+        if time() - roundStart < 20:
+            sleep(20 - time() + roundStart)
+
 
 # ==== Program execution ======================================================
 
 if __name__ == '__main__':
     try:
         # Run initialization
-        init(config.track_dirs)
+        sync()
 
-        # Keep walking
-        print("Synchronized, watching for changes...")
-        watch(config.track_dirs)
     except KeyboardInterrupt:
         print('Interrupted by user. Exiting program...')
         exit(0)
