@@ -40,7 +40,6 @@ func showHelp() {
 	fmt.Println(" -m message:	commit message")
 }
 
-// TODO: Read config file and import settings
 func findConfig() {
 	// Try to find the config folder in parent folders
 	for REPOPATH != "/" {
@@ -48,6 +47,21 @@ func findConfig() {
 		if err == nil {
 			SYNCPATH = REPOPATH + "/.sync/"
 			DIFFPATH = SYNCPATH + "diff/"
+
+			// Open config file and read config
+			configFile, err := os.Open(SYNCPATH + "repo.conf")
+			if err != nil {
+				panic("Error reading config file: " + err.Error())
+			}
+
+			fmt.Fscanf(configFile, "name: %s\n", &REPONAME)
+			fmt.Fscanf(configFile, "profile: %s\n", &AWSPROFILE)
+			fmt.Fscanf(configFile, "region: %s\n", &AWSREGION)
+			configFile.Close()
+
+			fmt.Println("Using name: " + REPONAME)
+			fmt.Println("Using profile: " + AWSPROFILE)
+			fmt.Println("Using region: " + AWSREGION)
 			return
 		}
 		REPOPATH = filepath.Dir(REPOPATH)
@@ -88,7 +102,7 @@ func initConfig(args []string) {
 		err = os.Mkdir(DIFFPATH, 0777)
 
 		if err != nil {
-			panic("Error creating diff folder")
+			panic("Error creating diff folder: "+ err.Error())
 		}
 	}
 
