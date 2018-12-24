@@ -7,16 +7,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-func startDynamoDBSession(profile string, region string) (*dynamodb.DynamoDB) {
+func startDynamoDBSession() (*dynamodb.DynamoDB) {
 
 	// Start a session with DynamoDB
 	sess := session.Must(
 		session.NewSessionWithOptions(
 			session.Options{
 				Config: aws.Config{
-					Region: aws.String(region),
+					Region: aws.String(AWSREGION),
 				},
-				Profile: profile,
+				Profile: AWSPROFILE,
 			},
 		),
 	)
