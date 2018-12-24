@@ -10,6 +10,7 @@ import(
 var REPOPATH string
 var SYNCPATH string
 var DIFFPATH string
+var REPONAME string
 
 // TODO: Let function receive argument and return a more detailed help
 func showHelp() {
@@ -44,7 +45,16 @@ func findConfig() {
 	panic("diff dir not found, make sure you ran init first")
 }
 
+// FIXME: Let init again with another name, now it creates only the new
+// remote table
 func initConfig(args []string) {
+
+	if len(args) > 1 {
+		REPONAME = "repo-" + args[1]
+	} else {
+		REPONAME = "repo-" + filepath.Base(REPOPATH)
+	}
+
 	// Create .sync dir
 	configDir, err := os.Open(SYNCPATH)
 	configDir.Close()
@@ -76,23 +86,31 @@ func initConfig(args []string) {
 	configFile.Close()
 
 	if err == nil {
-		fmt.Println("Config file already exists, nothing to do")
-		return
-	}
-
-	configFile, err = os.Create(SYNCPATH + "repo.conf")
-	if err != nil {
-		panic("Error creating config file")
-	}
-
-	if len(args) > 1 {
-		_, err = configFile.Write([]byte("name: " + args[1] + "\n"))
+		fmt.Println("Config file already exists")
 	} else {
-		_, err = configFile.Write([]byte("name: " + filepath.Base(REPOPATH) + "\n"))
+		configFile, err = os.Create(SYNCPATH + "repo.conf")
+		if err != nil {
+			panic("Error creating config file")
+		}
+
+		_, err = configFile.Write([]byte("name: " + REPONAME + "\n"))
+		if err != nil {
+			panic("Error writing to config file")
+		}
 	}
 
+	// TODO: Let profile be passed as argument
+	// Create DynamoDB client
+	hasRepo, err := checkRepoExistence(REPONAME)
 	if err != nil {
-		panic("Error writing to config file")
+		panic("Error checking for repo existence: " + err.Error())
+	} else if !hasRepo {
+		err = createRepo(REPONAME)
+		if err != nil {
+			panic("Error creating remote repo: " + err.Error())
+		}
+	} else {
+		fmt.Println("Remote repo found")
 	}
 
 	fmt.Println("Done")
