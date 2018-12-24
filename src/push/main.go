@@ -4,6 +4,7 @@ import(
 	"os"
 	"fmt"
 	"path/filepath"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
 // Global variables
@@ -11,6 +12,7 @@ var REPOPATH string
 var SYNCPATH string
 var DIFFPATH string
 var REPONAME string
+var DYNAMODB *dynamodb.DynamoDB
 
 // TODO: Let function receive argument and return a more detailed help
 func showHelp() {
@@ -30,6 +32,7 @@ func showHelp() {
 	fmt.Println(" -m message:	commit message")
 }
 
+// TODO: Read config file and import settings
 func findConfig() {
 	// Try to find the config folder in parent folders
 	for REPOPATH != "/" {
@@ -45,6 +48,8 @@ func findConfig() {
 	panic("diff dir not found, make sure you ran init first")
 }
 
+// TODO: Take --aws-profile and --aws-region as argument and save in config
+// file
 // FIXME: Let init again with another name, now it creates only the new
 // remote table
 func initConfig(args []string) {
@@ -99,7 +104,6 @@ func initConfig(args []string) {
 		}
 	}
 
-	// TODO: Let profile be passed as argument
 	// Create DynamoDB client
 	hasRepo, err := checkRepoExistence(REPONAME)
 	if err != nil {
@@ -121,6 +125,7 @@ func main() {
 	REPOPATH, _ = os.Getwd()
 	SYNCPATH = REPOPATH + "/.sync/"
 	DIFFPATH = SYNCPATH + "diff/"
+	DYNAMODB = startDynamoDBSession("blmayer", "sa-east-1")
 
 	if len(os.Args) == 1 {
 		fmt.Println("Dynasync v1.0.0: A very simple version control system")
