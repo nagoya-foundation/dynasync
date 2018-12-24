@@ -8,18 +8,26 @@ import(
 )
 
 // Global variables
-var REPOPATH string
-var SYNCPATH string
-var DIFFPATH string
-var REPONAME string
-var DYNAMODB *dynamodb.DynamoDB
+var REPOPATH   string
+var SYNCPATH   string
+var DIFFPATH   string
+var REPONAME   string
+var AWSPROFILE string = "default"
+var AWSREGION  string = "us-east-1"
+var DYNAMODB   *dynamodb.DynamoDB
 
 // TODO: Let function receive argument and return a more detailed help
 func showHelp() {
 	fmt.Println("")
-	fmt.Println("Usage: dynasync [command] file ...")
+	fmt.Println("Usage: dynasync [option] [command] file ...")
 	fmt.Println("")
-	fmt.Println("Options for command are:")
+	fmt.Println("Available options are:")
+	fmt.Println(" --aws-profile:	use the given aws profile," +
+		" defaults to 'default'")
+	fmt.Println(" --aws-region:	use the given aws region," +
+		" defaults to 'us-east-1'")
+	fmt.Println("")
+	fmt.Println("Available command are:")
 	fmt.Println(" init:		create configuration file")
 	fmt.Println(" commit")
 	fmt.Println(" tag")
@@ -48,14 +56,12 @@ func findConfig() {
 	panic("diff dir not found, make sure you ran init first")
 }
 
-// TODO: Take --aws-profile and --aws-region as argument and save in config
-// file
 // FIXME: Let init again with another name, now it creates only the new
 // remote table
 func initConfig(args []string) {
 
-	if len(args) > 1 {
-		REPONAME = "repo-" + args[1]
+	if len(args) > 0 {
+		REPONAME = "repo-" + args[0]
 	} else {
 		REPONAME = "repo-" + filepath.Base(REPOPATH)
 	}
@@ -98,13 +104,17 @@ func initConfig(args []string) {
 			panic("Error creating config file")
 		}
 
-		_, err = configFile.Write([]byte("name: " + REPONAME + "\n"))
+		_, err = configFile.Write([]byte(
+			"name: " + REPONAME + "\n" +
+			"profile: " + AWSPROFILE + "\n" +
+			"region: " + AWSREGION + "\n"))
 		if err != nil {
-			panic("Error writing to config file")
+			panic("Error writing to config file: " + err.Error())
 		}
 	}
 
 	// Create DynamoDB client
+	DYNAMODB = startDynamoDBSession()
 	hasRepo, err := checkRepoExistence(REPONAME)
 	if err != nil {
 		panic("Error checking for repo existence: " + err.Error())
@@ -113,6 +123,7 @@ func initConfig(args []string) {
 		if err != nil {
 			panic("Error creating remote repo: " + err.Error())
 		}
+		fmt.Println("Remote table " + REPONAME + " created")
 	} else {
 		fmt.Println("Remote repo found")
 	}
@@ -125,7 +136,6 @@ func main() {
 	REPOPATH, _ = os.Getwd()
 	SYNCPATH = REPOPATH + "/.sync/"
 	DIFFPATH = SYNCPATH + "diff/"
-	DYNAMODB = startDynamoDBSession("blmayer", "sa-east-1")
 
 	if len(os.Args) == 1 {
 		fmt.Println("Dynasync v1.0.0: A very simple version control system")
@@ -133,8 +143,16 @@ func main() {
 		return
 	}
 
-	for i, arg := range(os.Args[1:]) {
-		switch arg {
+	for i := 1; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "--aws-profile":
+			AWSPROFILE = os.Args[i + 1]
+			i++
+			break
+		case "--aws-region":
+			AWSREGION = os.Args[i + 1]
+			i++
+			break
 		case "--help":
 			fallthrough
 		case "help":
@@ -142,7 +160,7 @@ func main() {
 		case "-h":
 			fmt.Println("Dynasync v1.0.0: A very simple version control system")
 			showHelp()
-			break
+			return
 		case "init":
 			initConfig(os.Args[i + 1:])
 			return
@@ -151,8 +169,9 @@ func main() {
 			commit(os.Args[i + 1:])
 			return
 		default:
-			fmt.Println("error: illegal option", arg)
+			fmt.Println("error: illegal option", os.Args[i])
 			showHelp()
+			return
 		}
 	}
 }
