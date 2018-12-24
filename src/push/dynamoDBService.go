@@ -7,38 +7,45 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-func sendCommit(diff string) (error) {
+func startDynamoDBSession(profile string, region string) (*dynamodb.DynamoDB) {
 
-	// Transform the dynamoDBUser struct in the attribute map
+	// Start a session with DynamoDB
+	sess := session.Must(
+		session.NewSessionWithOptions(
+			session.Options{
+				Config: aws.Config{
+					Region: aws.String(region),
+				},
+				Profile: profile,
+			},
+		),
+	)
+
+	return dynamodb.New(sess)
+}
+
+func sendCommit(repoName string, diff string) (error) {
+
 	av, err := dynamodbattribute.MarshalMap(diff)
 	if err != nil {
 		return err
 	}
 
-	// Start a session with DynamoDB and put the item
-	svcDynamo := dynamodb.New(session.New())
 	input := &dynamodb.PutItemInput{
 		Item:                av,
-		TableName:           aws.String("users"),
+		TableName:           aws.String(repoName),
 		ConditionExpression: aws.String("attribute_not_exists(email)"),
 	}
 
 	// Make the query and check for errors
-	_, err = svcDynamo.PutItem(input)
+	_, err = DYNAMODB.PutItem(input)
 
 	return err
 }
 
 func checkRepoExistence(repoName string) (bool, error) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		Config: aws.Config{Region: aws.String("sa-east-1")},
-		Profile: "blmayer",
-	}))
-
-	svc := dynamodb.New(sess)
-
 	// Check if table exists
-	tables, err := svc.ListTables(&dynamodb.ListTablesInput{})
+	tables, err := DYNAMODB.ListTables(&dynamodb.ListTablesInput{})
 	if err != nil {
 		return false, err
 	}
@@ -52,13 +59,6 @@ func checkRepoExistence(repoName string) (bool, error) {
 }
 
 func createRepo(repoName string) (error) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		Config: aws.Config{Region: aws.String("sa-east-1")},
-		Profile: "blmayer",
-	}))
-
-	svc := dynamodb.New(sess)
-
 	input := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
@@ -79,7 +79,7 @@ func createRepo(repoName string) (error) {
 		TableName: aws.String(repoName),
 	}
 
-	_, err := svc.CreateTable(input)
+	_, err := DYNAMODB.CreateTable(input)
 
 	if err != nil {
 		return err
