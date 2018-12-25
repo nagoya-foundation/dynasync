@@ -24,7 +24,7 @@ func diff(files []string) {
 		fileConn.Close()
 
 		// Same for diff file
-		diffFile := DIFFPATH + base64.StdEncoding.EncodeToString([]byte(file))
+		diffFile := DIFFPATH + base64.RawURLEncoding.EncodeToString([]byte(file))
 		diffInfo, errDiff := os.Stat(diffFile)
 		var diffContent []byte
 		diffConn, err := os.OpenFile(diffFile, os.O_RDWR|os.O_CREATE, 0666)
@@ -58,6 +58,7 @@ func diff(files []string) {
 }
 
 // TODO: Add glob support
+// TODO: Open an editor to enter message
 func commit(args []string) {
 	for i := range(args) {
 		if string(args[i]) == "-m" {
