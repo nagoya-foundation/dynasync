@@ -100,10 +100,14 @@ func initConfig(args []string) {
 	if err != nil {
 		fmt.Println("Creating diff dir")
 		err = os.Mkdir(DIFFPATH, 0777)
+	} else {
+		// Cleanse diff dir
+		os.RemoveAll(DIFFPATH)
+		err = os.Mkdir(DIFFPATH, 0777)
+	}
 
-		if err != nil {
-			panic("Error creating diff folder: "+ err.Error())
-		}
+	if err != nil {
+		panic("Error creating diff folder: "+ err.Error())
 	}
 
 	// Create .sync/repo.conf file
