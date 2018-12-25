@@ -7,7 +7,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-func diff(files []string) {
+func diff(files []string, mess string) (error) {
 	// Backup each committed file
 	for _, file := range(files) {
 		fmt.Println("preparing file " + file + " to commit")
@@ -41,20 +41,24 @@ func diff(files []string) {
 		_, err = diffConn.WriteAt(content, 0)
 		diffConn.Close()
 
+		if err != nil {
+			panic("error writing diff file: " + err.Error())
+		}
+
 		// Create diff to send
 		dmp := diffmatchpatch.New()
 		fmt.Println("creating diff...")
 		patches := dmp.PatchMake(string(diffContent), string(content))
 		diff := dmp.PatchToText(patches)
-		fmt.Println("done")
 
-		// TODO: Send patch to DynamoDB
-		fmt.Println(diff)
-
+		// Send patch to DynamoDB
+		err = sendCommit(diff, mess)
 		if err != nil {
-			panic("error writing diff file")
+			fmt.Println("Commit error: " + err.Error())
+			return err
 		}
 	}
+	return nil
 }
 
 // TODO: Add glob support
@@ -63,7 +67,10 @@ func commit(args []string) {
 	for i := range(args) {
 		if string(args[i]) == "-m" {
 			if i + 1 < len(args) {
-				diff(args[0:i])
+				err := diff(args[0:i], args[i + 1])
+				if err != nil {
+					return
+				}
 				fmt.Println("commited file(s)", args[0:i])
 				fmt.Println("with message", args[i + 1])
 			} else {
