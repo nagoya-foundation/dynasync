@@ -112,6 +112,8 @@ func initConfig(args []string) {
 
 	if err == nil {
 		fmt.Println("Config file already exists")
+		findConfig()
+
 	} else {
 		configFile, err = os.Create(SYNCPATH + "repo.conf")
 		if err != nil {
@@ -133,7 +135,7 @@ func initConfig(args []string) {
 	if err != nil {
 		panic("Error checking for repo existence: " + err.Error())
 	} else if !hasRepo {
-		err = createRepo(REPONAME)
+		err = createRepo()
 		if err != nil {
 			panic("Error creating remote repo: " + err.Error())
 		}
