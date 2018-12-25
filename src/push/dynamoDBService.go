@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+	"crypto/md5"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -24,17 +26,25 @@ func startDynamoDBSession() (*dynamodb.DynamoDB) {
 	return dynamodb.New(sess)
 }
 
-func sendCommit(repoName string, diff string) (error) {
+func sendCommit(diff string, message string) (error) {
+	hash := md5.Sum([]byte(diff))
 
-	av, err := dynamodbattribute.MarshalMap(diff)
+	// Build Commit struct
+	data := Commit{
+		Id:      hash[:16],
+		Date:    time.Now().String(),
+		Diff:    diff,
+		Message: message,
+	}
+
+	av, err := dynamodbattribute.MarshalMap(data)
 	if err != nil {
 		return err
 	}
 
 	input := &dynamodb.PutItemInput{
-		Item:                av,
-		TableName:           aws.String(repoName),
-		ConditionExpression: aws.String("attribute_not_exists(email)"),
+		Item:      av,
+		TableName: aws.String(REPONAME),
 	}
 
 	// Make the query and check for errors
@@ -58,25 +68,33 @@ func checkRepoExistence(repoName string) (bool, error) {
 	return false, nil
 }
 
-func createRepo(repoName string) (error) {
+func createRepo() (error) {
 	input := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
-				AttributeName: aws.String("commit"),
-				AttributeType: aws.String("N"),
+				AttributeName: aws.String("commitId"),
+				AttributeType: aws.String("B"),
+			},
+			{
+				AttributeName: aws.String("date"),
+				AttributeType: aws.String("S"),
 			},
 		},
 		KeySchema: []*dynamodb.KeySchemaElement{
 			{
-				AttributeName: aws.String("commit"),
+				AttributeName: aws.String("commitId"),
 				KeyType:       aws.String("HASH"),
+			},
+			{
+				AttributeName: aws.String("date"),
+				KeyType:       aws.String("RANGE"),
 			},
 		},
 		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
 			ReadCapacityUnits:  aws.Int64(10),
 			WriteCapacityUnits: aws.Int64(10),
 		},
-		TableName: aws.String(repoName),
+		TableName: aws.String(REPONAME),
 	}
 
 	_, err := DYNAMODB.CreateTable(input)

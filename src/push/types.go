@@ -1,8 +1,9 @@
 package main
 
 type Commit struct {
-	Id      string
-	Diffs   []string
-	Date    string
-	Message string
+	Id      []byte `json:"commitId"`
+	Date    string `json:"date"`
+	Diff    string `json:"diff"`
+	Message string `json:"message"`
 }
+
