@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"time"
+	"errors"
 	"crypto/md5"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -27,6 +29,14 @@ func startDynamoDBSession() (*dynamodb.DynamoDB) {
 }
 
 func sendCommit(diff string, message string) (error) {
+	// Before everything, check if the table exists
+	hasRepo, err := checkRepoExistence(REPONAME)
+	if err != nil {
+		return err
+	} else if !hasRepo {
+		return errors.New("Commit failed: Table " + REPONAME + " not found")
+	}
+
 	hash := md5.Sum([]byte(diff))
 
 	// Build Commit struct
@@ -47,6 +57,7 @@ func sendCommit(diff string, message string) (error) {
 		TableName: aws.String(REPONAME),
 	}
 
+	fmt.Println(input)
 	// Make the query and check for errors
 	_, err = DYNAMODB.PutItem(input)
 
