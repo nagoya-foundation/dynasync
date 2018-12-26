@@ -3,6 +3,7 @@ package main
 import(
 	"os"
 	"fmt"
+	"errors"
 	"path/filepath"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
@@ -40,7 +41,7 @@ func showHelp() {
 	fmt.Println(" -m message:	commit message")
 }
 
-func findConfig() {
+func findConfig() (error) {
 	// Try to find the config folder in parent folders
 	for REPOPATH != "/" {
 		_, err := os.Stat(REPOPATH + "/.sync/")
@@ -51,7 +52,7 @@ func findConfig() {
 			// Open config file and read config
 			configFile, err := os.Open(SYNCPATH + "repo.conf")
 			if err != nil {
-				panic("Error reading config file: " + err.Error())
+				return err
 			}
 
 			fmt.Fscanf(configFile, "name: %s\n", &REPONAME)
@@ -62,12 +63,12 @@ func findConfig() {
 			fmt.Println("Using name: " + REPONAME)
 			fmt.Println("Using profile: " + AWSPROFILE)
 			fmt.Println("Using region: " + AWSREGION)
-			return
+			return nil
 		}
 		REPOPATH = filepath.Dir(REPOPATH)
 	}
 
-	panic("diff dir not found, make sure you ran init first")
+	return errors.New("Config dir not found")
 }
 
 // FIXME: Let init again with another name, now it creates only the new
@@ -133,7 +134,6 @@ func initConfig(args []string) {
 		}
 	}
 
-	// Create DynamoDB client
 	DYNAMODB = startDynamoDBSession()
 	hasRepo, err := checkRepoExistence(REPONAME)
 	if err != nil {
@@ -185,7 +185,12 @@ func main() {
 			initConfig(os.Args[i + 1:])
 			return
 		case "commit":
-			findConfig()
+			if findConfig() != nil {
+				fmt.Println("Error: Config file not found")
+				return
+			}
+
+			DYNAMODB = startDynamoDBSession()
 			commit(os.Args[i + 1:])
 			return
 		default:
