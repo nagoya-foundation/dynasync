@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"crypto/md5"
 	"encoding/base64"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -10,6 +12,12 @@ import (
 func diff(files []string, mess string) (error) {
 	// Backup each committed file
 	for _, file := range(files) {
+		thisDir, _ := os.Getwd()
+		relFile, pathErr := filepath.Rel(REPOPATH, thisDir + "/" + file)
+		if pathErr != nil {
+			fmt.Println("Relative path error: " + pathErr.Error())
+			continue
+		}
 		fmt.Println("preparing file " + file + " to commit")
 		fileInfo, _ := os.Stat(file)
 		fileConn, errFile := os.Open(file)
@@ -24,7 +32,7 @@ func diff(files []string, mess string) (error) {
 		fileConn.Close()
 
 		// Same for diff file
-		diffFile := DIFFPATH + base64.RawURLEncoding.EncodeToString([]byte(file))
+		diffFile := DIFFPATH + base64.RawURLEncoding.EncodeToString([]byte(relFile))
 		diffInfo, errDiff := os.Stat(diffFile)
 		var diffContent []byte
 		diffConn, err := os.OpenFile(diffFile, os.O_RDWR|os.O_CREATE, 0666)
@@ -51,8 +59,11 @@ func diff(files []string, mess string) (error) {
 		patches := dmp.PatchMake(string(diffContent), string(content))
 		diff := dmp.PatchToText(patches)
 
+		// Create hash for security
+		hash := md5.Sum(content)
+
 		// Send patch to DynamoDB
-		err = sendCommit(diff, mess)
+		err = sendCommit(relFile, hash, diff, mess)
 		if err != nil {
 			fmt.Println("Commit error: " + err.Error())
 			return err
