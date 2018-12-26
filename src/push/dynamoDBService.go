@@ -1,5 +1,3 @@
-package main
-
 import (
 	"fmt"
 	"time"
@@ -42,7 +40,7 @@ func sendCommit(diff string, message string) (error) {
 	// Build Commit struct
 	data := Commit{
 		Id:      hash[:16],
-		Date:    time.Now().String(),
+		Date:    time.Now().Unix(),
 		Diff:    diff,
 		Message: message,
 	}
@@ -57,7 +55,6 @@ func sendCommit(diff string, message string) (error) {
 		TableName: aws.String(REPONAME),
 	}
 
-	fmt.Println(input)
 	// Make the query and check for errors
 	_, err = DYNAMODB.PutItem(input)
 
@@ -88,7 +85,7 @@ func createRepo() (error) {
 			},
 			{
 				AttributeName: aws.String("date"),
-				AttributeType: aws.String("S"),
+				AttributeType: aws.String("N"),
 			},
 		},
 		KeySchema: []*dynamodb.KeySchemaElement{
