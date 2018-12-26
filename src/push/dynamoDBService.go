@@ -1,8 +1,8 @@
+package main
+
 import (
-	"fmt"
 	"time"
 	"errors"
-	"crypto/md5"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -26,7 +26,7 @@ func startDynamoDBSession() (*dynamodb.DynamoDB) {
 	return dynamodb.New(sess)
 }
 
-func sendCommit(diff string, message string) (error) {
+func sendCommit(file string, hash [16]byte, diff string, msg string) (error) {
 	// Before everything, check if the table exists
 	hasRepo, err := checkRepoExistence(REPONAME)
 	if err != nil {
@@ -35,14 +35,13 @@ func sendCommit(diff string, message string) (error) {
 		return errors.New("Commit failed: Table " + REPONAME + " not found")
 	}
 
-	hash := md5.Sum([]byte(diff))
-
 	// Build Commit struct
 	data := Commit{
-		Id:      hash[:16],
+		File:    file,
 		Date:    time.Now().Unix(),
 		Diff:    diff,
-		Message: message,
+		Hash:    hash,
+		Message: msg,
 	}
 
 	av, err := dynamodbattribute.MarshalMap(data)
@@ -80,8 +79,8 @@ func createRepo() (error) {
 	input := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
-				AttributeName: aws.String("commitId"),
-				AttributeType: aws.String("B"),
+				AttributeName: aws.String("filePath"),
+				AttributeType: aws.String("S"),
 			},
 			{
 				AttributeName: aws.String("date"),
@@ -90,7 +89,7 @@ func createRepo() (error) {
 		},
 		KeySchema: []*dynamodb.KeySchemaElement{
 			{
-				AttributeName: aws.String("commitId"),
+				AttributeName: aws.String("filePath"),
 				KeyType:       aws.String("HASH"),
 			},
 			{
@@ -99,8 +98,8 @@ func createRepo() (error) {
 			},
 		},
 		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(10),
-			WriteCapacityUnits: aws.Int64(10),
+			ReadCapacityUnits:  aws.Int64(25),
+			WriteCapacityUnits: aws.Int64(25),
 		},
 		TableName: aws.String(REPONAME),
 	}
