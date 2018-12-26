@@ -60,9 +60,6 @@ func findConfig() (error) {
 			fmt.Fscanf(configFile, "region: %s\n", &AWSREGION)
 			configFile.Close()
 
-			fmt.Println("Using name: " + REPONAME)
-			fmt.Println("Using profile: " + AWSPROFILE)
-			fmt.Println("Using region: " + AWSREGION)
 			return nil
 		}
 		REPOPATH = filepath.Dir(REPOPATH)
