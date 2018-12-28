@@ -30,15 +30,22 @@ func showHelp() {
 	fmt.Println("")
 	fmt.Println("Available command are:")
 	fmt.Println(" init:		create configuration file")
-	fmt.Println(" commit")
-	fmt.Println(" tag")
+	fmt.Println(" commit:	send modifications to remote table")
+	fmt.Println(" tag:		adds a tag to current repo status")
+	fmt.Println(" clone:		initiates a copy of a remote repo")
 	fmt.Println("")
 	fmt.Println("Optional parameters for init:")
 	fmt.Println(" name:		set the repo name for name")
 	fmt.Println("")
 	fmt.Println("Needed parameters for commit:")
-	fmt.Println(" files:		files to be sent to repository")
+	fmt.Println(" files:		list of files to be sent to repository")
 	fmt.Println(" -m message:	commit message")
+	fmt.Println("")
+	fmt.Println("Needed parameters for tag:")
+	fmt.Println(" tag:		tag name")
+	fmt.Println("")
+	fmt.Println("Needed parameters for clone:")
+	fmt.Println(" repo:		repo name")
 }
 
 func findConfig() (error) {
@@ -65,7 +72,7 @@ func findConfig() (error) {
 		REPOPATH = filepath.Dir(REPOPATH)
 	}
 
-	return errors.New("Config dir not found")
+	return errors.New("config dir not found")
 }
 
 // FIXME: Let init again with another name, now it creates only the new
@@ -83,11 +90,11 @@ func initConfig(args []string) {
 	configDir.Close()
 
 	if err != nil {
-		fmt.Println("Creating config dir")
+		fmt.Println("creating config dir")
 		err = os.Mkdir(SYNCPATH, 0777)
 
 		if err != nil {
-			panic("Error creating .sync folder")
+			panic("error creating .sync folder")
 		}
 	}
 
@@ -96,7 +103,7 @@ func initConfig(args []string) {
 	diffDir.Close()
 
 	if err != nil {
-		fmt.Println("Creating diff dir")
+		fmt.Println("creating diff dir")
 		err = os.Mkdir(DIFFPATH, 0777)
 	} else {
 		// Cleanse diff dir
@@ -105,7 +112,7 @@ func initConfig(args []string) {
 	}
 
 	if err != nil {
-		panic("Error creating diff folder: "+ err.Error())
+		panic("error creating diff folder: "+ err.Error())
 	}
 
 	// Create .sync/repo.conf file
@@ -113,13 +120,13 @@ func initConfig(args []string) {
 	configFile.Close()
 
 	if err == nil {
-		fmt.Println("Config file already exists")
+		fmt.Println("config file already exists")
 		findConfig()
 
 	} else {
 		configFile, err = os.Create(SYNCPATH + "repo.conf")
 		if err != nil {
-			panic("Error creating config file")
+			panic("error creating config file")
 		}
 
 		_, err = configFile.Write([]byte(
@@ -127,25 +134,25 @@ func initConfig(args []string) {
 			"profile: " + AWSPROFILE + "\n" +
 			"region: " + AWSREGION + "\n"))
 		if err != nil {
-			panic("Error writing to config file: " + err.Error())
+			panic("error writing to config file: " + err.Error())
 		}
 	}
 
 	DYNAMODB = startDynamoDBSession()
 	hasRepo, err := checkRepoExistence(REPONAME)
 	if err != nil {
-		panic("Error checking for repo existence: " + err.Error())
+		panic("error checking for repo existence: " + err.Error())
 	} else if !hasRepo {
 		err = createRepo()
 		if err != nil {
-			panic("Error creating remote repo: " + err.Error())
+			panic("error creating remote repo: " + err.Error())
 		}
-		fmt.Println("Remote table " + REPONAME + " created")
+		fmt.Println("remote table " + REPONAME + " created")
 	} else {
-		fmt.Println("Remote repo found")
+		fmt.Println("remote repo found")
 	}
 
-	fmt.Println("Done")
+	fmt.Println("done")
 }
 
 func main() {
@@ -183,12 +190,24 @@ func main() {
 			return
 		case "commit":
 			if findConfig() != nil {
-				fmt.Println("Error: Config file not found")
+				fmt.Println("error: Config file not found")
 				return
 			}
 
 			DYNAMODB = startDynamoDBSession()
 			commit(os.Args[i + 1:])
+			return
+		case "tag":
+			if findConfig() != nil {
+				fmt.Println("error: Config file not found")
+				return
+			}
+
+			DYNAMODB = startDynamoDBSession()
+			err := tag(os.Args[i + 1])
+			if err != nil {
+				fmt.Println("error taging: " + err.Error())
+			}
 			return
 		default:
 			fmt.Println("error: illegal option", os.Args[i])
