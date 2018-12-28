@@ -10,20 +10,22 @@ import (
 )
 
 func diff(files []string, mess string) (error) {
+	thisDir, _ := os.Getwd()
+
 	// Backup each committed file
 	for _, file := range(files) {
-		thisDir, _ := os.Getwd()
+		// Make path system independent
 		relFile, pathErr := filepath.Rel(REPOPATH, thisDir + "/" + file)
 		if pathErr != nil {
-			fmt.Println("Relative path error: " + pathErr.Error())
+			fmt.Println("relative path error: " + pathErr.Error())
 			continue
 		}
-		fmt.Println("preparing file " + file + " to commit")
+
 		fileInfo, _ := os.Stat(file)
 		fileConn, errFile := os.Open(file)
 
 		if errFile != nil {
-			panic("error reading file to commit")
+			panic("error reading file to commit: " + errFile.Error())
 		}
 
 		// Copy original file contents to buffer
@@ -63,9 +65,10 @@ func diff(files []string, mess string) (error) {
 		hash := md5.Sum(content)
 
 		// Send patch to DynamoDB
+		fmt.Println("sending commit to remote table")
 		err = sendCommit(relFile, hash, diff, mess)
 		if err != nil {
-			fmt.Println("Commit error: " + err.Error())
+			fmt.Println("commit error: " + err.Error())
 			return err
 		}
 	}
