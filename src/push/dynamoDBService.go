@@ -32,7 +32,7 @@ func sendCommit(file string, hash [16]byte, diff string, msg string) (error) {
 	if err != nil {
 		return err
 	} else if !hasRepo {
-		return errors.New("Commit failed: Table " + REPONAME + " not found")
+		return errors.New("commit failed: Table " + REPONAME + " not found")
 	}
 
 	// Build Commit struct
@@ -42,6 +42,38 @@ func sendCommit(file string, hash [16]byte, diff string, msg string) (error) {
 		Diff:    diff,
 		Hash:    hash,
 		Message: msg,
+	}
+
+	av, err := dynamodbattribute.MarshalMap(data)
+	if err != nil {
+		return err
+	}
+
+	input := &dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String(REPONAME),
+	}
+
+	// Make the query and check for errors
+	_, err = DYNAMODB.PutItem(input)
+
+	return err
+}
+
+func tag(msg string) (error) {
+	// Before everything, check if the table exists
+	hasRepo, err := checkRepoExistence(REPONAME)
+	if err != nil {
+		return err
+	} else if !hasRepo {
+		return errors.New("tag failed: Table " + REPONAME + " not found")
+	}
+
+	// Build Commit struct
+	data := Tag{
+		Date: time.Now().Unix(),
+		File: "tagFile",
+		Text: msg,
 	}
 
 	av, err := dynamodbattribute.MarshalMap(data)
@@ -79,21 +111,21 @@ func createRepo() (error) {
 	input := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
-				AttributeName: aws.String("filePath"),
-				AttributeType: aws.String("S"),
-			},
-			{
 				AttributeName: aws.String("date"),
 				AttributeType: aws.String("N"),
+			},
+			{
+				AttributeName: aws.String("filePath"),
+				AttributeType: aws.String("S"),
 			},
 		},
 		KeySchema: []*dynamodb.KeySchemaElement{
 			{
-				AttributeName: aws.String("filePath"),
+				AttributeName: aws.String("date"),
 				KeyType:       aws.String("HASH"),
 			},
 			{
-				AttributeName: aws.String("date"),
+				AttributeName: aws.String("filePath"),
 				KeyType:       aws.String("RANGE"),
 			},
 		},
