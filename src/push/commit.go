@@ -33,7 +33,8 @@ func diff(files []string, mess string) (error) {
 		fileConn.Close()
 
 		// Same for diff file
-		diffFile := DIFFPATH + base64.RawURLEncoding.EncodeToString([]byte(relFile))
+		diffFile := REPOPATH + "/.sync/diff/" +
+			base64.RawURLEncoding.EncodeToString([]byte(relFile))
 		diffInfo, errDiff := os.Stat(diffFile)
 		var diffContent []byte
 		diffConn, err := os.OpenFile(diffFile, os.O_RDWR|os.O_CREATE, 0666)

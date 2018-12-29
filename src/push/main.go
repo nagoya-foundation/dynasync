@@ -11,8 +11,6 @@ import(
 // Global variables
 var HOMEPATH   string
 var REPOPATH   string
-var SYNCPATH   string
-var DIFFPATH   string
 var REPONAME   string
 var AWSPROFILE string = "default"
 var AWSREGION  string = "us-east-1"
@@ -67,11 +65,8 @@ func findConfig() (error) {
 	for REPOPATH != "/" {
 		_, err := os.Stat(REPOPATH + "/.sync/")
 		if err == nil {
-			SYNCPATH = REPOPATH + "/.sync/"
-			DIFFPATH = SYNCPATH + "diff/"
-
 			// Open config file and read config
-			configFile, err := os.Open(SYNCPATH + "repo.conf")
+			configFile, err := os.Open(REPOPATH + "/.sync/repo.conf")
 			if err != nil {
 				return err
 			}
@@ -117,18 +112,18 @@ func initRepo(repo string) {
 	}
 
 	// Local repo config
-	os.MkdirAll(SYNCPATH, 0777)
-	os.RemoveAll(DIFFPATH)
-	os.MkdirAll(DIFFPATH, 0777)
+	os.MkdirAll(REPOPATH + "/.sync", 0777)
+	os.RemoveAll(REPOPATH + "/.sync/diff")
+	os.MkdirAll(REPOPATH + "/.sync/diff", 0777)
 
 	// Create .sync/repo.conf file
-	_, err = os.Stat(SYNCPATH + "repo.conf")
+	_, err = os.Stat(REPOPATH + "/.sync/repo.conf")
 
 	if err == nil {
 		fmt.Println("config file already exists")
 		findConfig()
 	} else {
-		configFile, err := os.Create(SYNCPATH + "repo.conf")
+		configFile, err := os.Create(REPOPATH + "/.sync/repo.conf")
 
 		_, err = configFile.Write([]byte(
 			"name: " + REPONAME + "\n" +
@@ -160,8 +155,6 @@ func main() {
 	HOMEPATH = os.Getenv("HOME")
 	_ = loadGlobalConfig()
 	REPOPATH, _ = os.Getwd()
-	SYNCPATH = REPOPATH + "/.sync/"
-	DIFFPATH = SYNCPATH + "diff/"
 
 	if len(os.Args) == 1 {
 		fmt.Println("Dynasync v1.0.0: A very simple version control system")
