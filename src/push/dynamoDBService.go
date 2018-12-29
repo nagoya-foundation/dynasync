@@ -60,6 +60,30 @@ func sendCommit(file string, hash [16]byte, diff string, msg string) (error) {
 	return err
 }
 
+func getAllCommits(repo string) ([]Commit, error) {
+
+	input := &dynamodb.ScanInput{
+		TableName: aws.String(repo),
+	}
+
+	// TODO: Implement pagination
+	result, err := DYNAMODB.Scan(input)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var commits []Commit
+
+	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, &commits)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return commits, nil
+}
+
 func tag(msg string) (error) {
 	// Before everything, check if the table exists
 	hasRepo, err := checkRepoExistence(REPONAME)

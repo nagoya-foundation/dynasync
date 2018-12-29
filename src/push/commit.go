@@ -10,11 +10,10 @@ import (
 )
 
 func diff(files []string, mess string) (error) {
-	thisDir, _ := os.Getwd()
-
 	// Backup each committed file
 	for _, file := range(files) {
-		// Make path system independent
+		// TODO: Make path system independent
+		thisDir, _ := os.Getwd()
 		relFile, pathErr := filepath.Rel(REPOPATH, thisDir + "/" + file)
 		if pathErr != nil {
 			fmt.Println("relative path error: " + pathErr.Error())

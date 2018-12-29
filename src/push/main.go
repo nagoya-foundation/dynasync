@@ -9,6 +9,7 @@ import(
 )
 
 // Global variables
+var HOMEPATH   string
 var REPOPATH   string
 var SYNCPATH   string
 var DIFFPATH   string
@@ -48,6 +49,19 @@ func showHelp() {
 	fmt.Println(" repo:		repo name")
 }
 
+func loadGlobalConfig() (error) {
+	configFile, err := os.Open(HOMEPATH + "/.config/sync/global.conf")
+	if err != nil {
+		return err
+	}
+
+	// TODO: return error if read failed
+	fmt.Fscanf(configFile, "profile: %s\n", &AWSPROFILE)
+	fmt.Fscanf(configFile, "region: %s\n", &AWSREGION)
+	configFile.Close()
+	return nil
+}
+
 func findConfig() (error) {
 	// Try to find the config folder in parent folders
 	for REPOPATH != "/" {
@@ -77,57 +91,44 @@ func findConfig() (error) {
 
 // FIXME: Let init again with another name, now it creates only the new
 // remote table
-func initConfig(args []string) {
+func initRepo(repo string) {
 
-	if len(args) > 0 {
-		REPONAME = "repo-" + args[0]
+	// Check args
+	if repo != ""  {
+		REPONAME = "repo-" + repo
 	} else {
 		REPONAME = "repo-" + filepath.Base(REPOPATH)
 	}
 
-	// Create .sync dir
-	configDir, err := os.Open(SYNCPATH)
-	configDir.Close()
-
+	// Load global config if exists
+	_, err := os.Stat(HOMEPATH + "/.config/sync/global.conf")
 	if err != nil {
-		fmt.Println("creating config dir")
-		err = os.Mkdir(SYNCPATH, 0777)
-
+		os.MkdirAll(HOMEPATH + "/.config/sync", 0777)
+		globalConfFile, err := os.Create(HOMEPATH + "/.config/sync/global.conf")
+		_, err = globalConfFile.Write([]byte(
+			"profile: " + AWSPROFILE + "\n" +
+			"region: " + AWSREGION + "\n"))
+			globalConfFile.Close()
 		if err != nil {
-			panic("error creating .sync folder")
+			panic("error writing global config file: " + err.Error())
 		}
-	}
-
-	// Create .sync/diff dir
-	diffDir, err := os.Open(DIFFPATH)
-	diffDir.Close()
-
-	if err != nil {
-		fmt.Println("creating diff dir")
-		err = os.Mkdir(DIFFPATH, 0777)
 	} else {
-		// Cleanse diff dir
-		os.RemoveAll(DIFFPATH)
-		err = os.Mkdir(DIFFPATH, 0777)
+		loadGlobalConfig()
 	}
 
-	if err != nil {
-		panic("error creating diff folder: "+ err.Error())
-	}
+	// Local repo config
+	os.MkdirAll(SYNCPATH, 0777)
+	os.RemoveAll(DIFFPATH)
+	os.MkdirAll(DIFFPATH, 0777)
 
 	// Create .sync/repo.conf file
-	configFile, err := os.Open(SYNCPATH + "repo.conf")
-	configFile.Close()
+	_, err = os.Stat(SYNCPATH + "repo.conf")
 
 	if err == nil {
 		fmt.Println("config file already exists")
 		findConfig()
-
 	} else {
-		configFile, err = os.Create(SYNCPATH + "repo.conf")
-		if err != nil {
-			panic("error creating config file")
-		}
+		configFile, err := os.Create(SYNCPATH + "repo.conf")
 
 		_, err = configFile.Write([]byte(
 			"name: " + REPONAME + "\n" +
@@ -138,7 +139,6 @@ func initConfig(args []string) {
 		}
 	}
 
-	DYNAMODB = startDynamoDBSession()
 	hasRepo, err := checkRepoExistence(REPONAME)
 	if err != nil {
 		panic("error checking for repo existence: " + err.Error())
@@ -157,6 +157,8 @@ func initConfig(args []string) {
 
 func main() {
 	// Keep track of the repo path
+	HOMEPATH = os.Getenv("HOME")
+	_ = loadGlobalConfig()
 	REPOPATH, _ = os.Getwd()
 	SYNCPATH = REPOPATH + "/.sync/"
 	DIFFPATH = SYNCPATH + "diff/"
@@ -167,13 +169,24 @@ func main() {
 		return
 	}
 
+	// TODO: Process all arguments before taking an action
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
 		case "--aws-profile":
+			if i + 2 > len(os.Args) {
+				fmt.Println("error: missing argument")
+				showHelp()
+				return
+			}
 			AWSPROFILE = os.Args[i + 1]
 			i++
 			break
 		case "--aws-region":
+			if i + 2 > len(os.Args) {
+				fmt.Println("error: missing argument")
+				showHelp()
+				return
+			}
 			AWSREGION = os.Args[i + 1]
 			i++
 			break
@@ -186,7 +199,12 @@ func main() {
 			showHelp()
 			return
 		case "init":
-			initConfig(os.Args[i + 1:])
+			DYNAMODB = startDynamoDBSession()
+			if i + 2 > len(os.Args) {
+				initRepo("")
+			} else {
+				initRepo(os.Args[i + 1])
+			}
 			return
 		case "commit":
 			if findConfig() != nil {
@@ -198,6 +216,11 @@ func main() {
 			commit(os.Args[i + 1:])
 			return
 		case "tag":
+			if i + 2 > len(os.Args) {
+				fmt.Println("error: missing argument")
+				showHelp()
+				return
+			}
 			if findConfig() != nil {
 				fmt.Println("error: Config file not found")
 				return
@@ -208,6 +231,16 @@ func main() {
 			if err != nil {
 				fmt.Println("error taging: " + err.Error())
 			}
+			return
+		case "clone":
+			if i + 2 > len(os.Args) {
+				fmt.Println("error: missing argument")
+				showHelp()
+				return
+			}
+
+			DYNAMODB = startDynamoDBSession()
+			clone(os.Args[i + 1])
 			return
 		default:
 			fmt.Println("error: illegal option", os.Args[i])
