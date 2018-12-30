@@ -135,21 +135,21 @@ func createRepo() (error) {
 	input := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
-				AttributeName: aws.String("date"),
-				AttributeType: aws.String("N"),
-			},
-			{
 				AttributeName: aws.String("filePath"),
 				AttributeType: aws.String("S"),
+			},
+			{
+				AttributeName: aws.String("date"),
+				AttributeType: aws.String("N"),
 			},
 		},
 		KeySchema: []*dynamodb.KeySchemaElement{
 			{
-				AttributeName: aws.String("date"),
+				AttributeName: aws.String("filePath"),
 				KeyType:       aws.String("HASH"),
 			},
 			{
-				AttributeName: aws.String("filePath"),
+				AttributeName: aws.String("date"),
 				KeyType:       aws.String("RANGE"),
 			},
 		},
