@@ -65,7 +65,6 @@ func diff(files []string, mess string) (error) {
 		hash := md5.Sum(content)
 
 		// Send patch to DynamoDB
-		fmt.Println("sending commit to remote table")
 		err = sendCommit(relFile, hash, diff, mess)
 		if err != nil {
 			fmt.Println("commit error: " + err.Error())

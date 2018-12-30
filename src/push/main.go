@@ -235,6 +235,11 @@ func main() {
 			DYNAMODB = startDynamoDBSession()
 			clone(os.Args[i + 1])
 			return
+		case "get":
+			findConfig()
+			DYNAMODB = startDynamoDBSession()
+			get()
+			return
 		default:
 			fmt.Println("error: illegal option", os.Args[i])
 			showHelp()
