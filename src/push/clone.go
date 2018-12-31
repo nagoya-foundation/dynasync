@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"encoding/base64"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -49,7 +50,11 @@ func clone(repo string) {
 	initRepo(repo)
 
 	// Download files from table
-	commits, _ := getAllCommits("")
+	commits, err := getAllCommits()
+	if err != nil {
+		fmt.Println("error getting commits: " + err.Error())
+		return
+	}
 
 	// Take all diffs
 	newFiles, err := getFileChanges(commits)
@@ -57,13 +62,24 @@ func clone(repo string) {
 		fmt.Println("error applying commits: " + err.Error())
 	}
 
+	fmt.Println("Writing files")
 	for id, file := range newFiles {
-		fileConn, _ := os.Create(id)
+		// Write file
+		fileConn, err := os.Create(id)
 		_, err = fileConn.Write([]byte(file))
 		if err != nil {
 			fmt.Println("error writing " + id + ": " + err.Error())
 		}
 		fileConn.Close()
+
+		// Write diff file
+		diffFile := base64.RawURLEncoding.EncodeToString([]byte(id))
+		diffConn, err := os.Create(REPOPATH + "/.sync/diff/" + diffFile)
+		_, err = diffConn.Write([]byte(file))
+		if err != nil {
+			fmt.Println("error writing " + id + ": " + err.Error())
+		}
+		diffConn.Close()
 	}
 	fmt.Println("done")
 
