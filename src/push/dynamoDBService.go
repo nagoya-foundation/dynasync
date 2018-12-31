@@ -60,14 +60,27 @@ func sendCommit(file string, hash [16]byte, diff string, msg string) (error) {
 	return err
 }
 
-func getAllCommits(repo string) ([]Commit, error) {
+func getAllCommits(file string) ([]Commit, error) {
 
-	input := &dynamodb.ScanInput{
-		TableName: aws.String(repo),
+	input := dynamodb.QueryInput{}
+	if file == "" {
+		input = dynamodb.QueryInput{
+			TableName: aws.String(REPONAME),
+		}
+	} else {
+		input = dynamodb.QueryInput{
+			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+				":file": {
+					S: aws.String(file),
+				},
+			},
+			KeyConditionExpression: aws.String("filePath = :file"),
+			TableName: aws.String(REPONAME),
+		}
 	}
 
 	// TODO: Implement pagination
-	result, err := DYNAMODB.Scan(input)
+	result, err := DYNAMODB.Query(&input)
 
 	if err != nil {
 		return nil, err
