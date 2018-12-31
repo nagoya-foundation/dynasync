@@ -49,7 +49,7 @@ func clone(repo string) {
 	initRepo(repo)
 
 	// Download files from table
-	commits, _ := getAllCommits(REPONAME)
+	commits, _ := getAllCommits("")
 
 	// Take all diffs
 	newFiles, err := getFileChanges(commits)
