@@ -9,6 +9,7 @@ import(
 )
 
 // Global variables
+var AUTHOR     string = "default"
 var HOMEPATH   string
 var REPOPATH   string
 var REPONAME   string
@@ -134,22 +135,16 @@ func initRepo(repo string) {
 		}
 	}
 
-	hasRepo, err := checkRepoExistence(REPONAME)
+	err = createRepo()
 	if err != nil {
-		panic("error checking for repo existence: " + err.Error())
-	} else if !hasRepo {
-		err = createRepo()
-		if err != nil {
-			panic("error creating remote repo: " + err.Error())
-		}
-		fmt.Println("remote table " + REPONAME + " created")
-	} else {
-		fmt.Println("remote repo found")
+		panic("error creating remote repo: " + err.Error())
 	}
 
+	// Create table entry
 	fmt.Println("done")
 }
 
+// TODO: Create status function
 func main() {
 	// Keep track of the repo path
 	HOMEPATH = os.Getenv("HOME")
