@@ -3,34 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"encoding/base64"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
-
-func getFileChanges(commits []Commit) (map[string]string, error) {
-	files := map[string]string{}
-	temp := map[string][]diffmatchpatch.Patch{}
-
-	// Create diff to send
-	dmp := diffmatchpatch.New()
-	fmt.Println("creating backward patch...")
-	for _, commit := range commits {
-		fmt.Println("Applying commit " + string(commit.Hash[0:16]))
-		patches, err := dmp.PatchFromText(commit.Diff)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, patch := range patches {
-			temp[commit.File] = append(temp[commit.File], patch)
-		}
-
-		newFile, _ := dmp.PatchApply(patches, files[commit.File])
-		files[commit.File] = newFile
-	}
-
-	return files, nil
-}
 
 func clone(repo string) {
 	// Start creating the repo
@@ -50,36 +23,18 @@ func clone(repo string) {
 	initRepo(repo)
 
 	// Download files from table
-	commits, err := getAllCommits()
+	commitIds, err := listRepoCommits()
 	if err != nil {
 		fmt.Println("error getting commits: " + err.Error())
 		return
 	}
 
-	// Take all diffs
-	newFiles, err := getFileChanges(commits)
-	if err != nil {
-		fmt.Println("error applying commits: " + err.Error())
-	}
-
-	fmt.Println("Writing files")
-	for id, file := range newFiles {
-		// Write file
-		fileConn, err := os.Create(id)
-		_, err = fileConn.Write([]byte(file))
+	for _, commit := range commitIds {
+		// Apply commit
+		err = applyCommit(commit)
 		if err != nil {
-			fmt.Println("error writing " + id + ": " + err.Error())
+			fmt.Println("error writing commit: " + err.Error())
 		}
-		fileConn.Close()
-
-		// Write diff file
-		diffFile := base64.RawURLEncoding.EncodeToString([]byte(id))
-		diffConn, err := os.Create(REPOPATH + "/.sync/diff/" + diffFile)
-		_, err = diffConn.Write([]byte(file))
-		if err != nil {
-			fmt.Println("error writing " + id + ": " + err.Error())
-		}
-		diffConn.Close()
 	}
 	fmt.Println("done")
 
