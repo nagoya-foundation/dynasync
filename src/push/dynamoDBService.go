@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"time"
-	"errors"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -27,32 +26,16 @@ func startDynamoDBSession() (*dynamodb.DynamoDB) {
 	return dynamodb.New(sess)
 }
 
-func sendCommit(file string, hash [16]byte, diff string, msg string) (error) {
-	// Before everything, check if the table exists
-	hasRepo, err := checkRepoExistence(REPONAME)
-	if err != nil {
-		return err
-	} else if !hasRepo {
-		return errors.New("commit failed: Table " + REPONAME + " not found")
-	}
-
-	// Build Commit struct
-	data := Commit{
-		File:    file,
-		Date:    time.Now().Unix(),
-		Diff:    diff,
-		Hash:    hash,
-		Message: msg,
-	}
-
-	av, err := dynamodbattribute.MarshalMap(data)
+func sendCommit(commit Commit) (error) {
+	av, err := dynamodbattribute.MarshalMap(commit)
 	if err != nil {
 		return err
 	}
 
 	input := &dynamodb.PutItemInput{
-		Item:      av,
-		TableName: aws.String(REPONAME),
+		Item:                av,
+		ConditionExpression: aws.String("attribute_not_exists(commitDate)"),
+		TableName:           aws.String("commits"),
 	}
 
 	// Make the query and check for errors
@@ -61,73 +44,95 @@ func sendCommit(file string, hash [16]byte, diff string, msg string) (error) {
 	return err
 }
 
-func getAllCommits() ([]Commit, error) {
+func getCommit(date int64) (Commit, error) {
+	dateInt := fmt.Sprintf("%d", date)
 
-	input := dynamodb.ScanInput{
-		TableName: aws.String(REPONAME),
-	}
-
-	// TODO: Implement pagination
-	result, err := DYNAMODB.Scan(&input)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var commits []Commit
-
-	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, &commits)
+	result, err := DYNAMODB.GetItem(
+		&dynamodb.GetItemInput{
+			Key: map[string]*dynamodb.AttributeValue{
+				"commitDate": {
+					N: aws.String(dateInt),
+				},
+			},
+			TableName: aws.String("commits"),
+		},
+	)
 
 	if err != nil {
-		return nil, err
+		return Commit{}, err
 	}
 
-	return commits, nil
+	var commit Commit
+
+	err = dynamodbattribute.UnmarshalMap(result.Item, &commit)
+
+	if err != nil {
+		return Commit{}, err
+	}
+
+	return commit, nil
 }
 
-func getFileCommits(file string) ([]Commit, error) {
-
-	input := dynamodb.QueryInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":file": {
-				S: aws.String(file),
+func listRepoCommits() ([]int64, error) {
+	input := dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"repo": {
+				S: aws.String(REPONAME),
 			},
 		},
-		KeyConditionExpression: aws.String("filePath = :file"),
-		TableName: aws.String(REPONAME),
+		ProjectionExpression: aws.String("commits"),
+		TableName:            aws.String("repos"),
 	}
 
 	// TODO: Implement pagination
-	result, err := DYNAMODB.Query(&input)
+	result, err := DYNAMODB.GetItem(&input)
 
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println(len(result.Items))
-	var commits []Commit
+	var repo RepoIndex
 
-	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, &commits)
+	err = dynamodbattribute.UnmarshalMap(result.Item, &repo)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return commits, nil
+	return repo.Commits, nil
+}
+
+func updateIndex(commit Commit) (error) {
+	date := fmt.Sprintf("%d", commit.Date)
+	fmt.Println(date)
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":c": {
+				NS: []*string{aws.String(string(date))},
+			},
+			":f": {
+				SS: []*string{aws.String(commit.File)},
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"repo": {
+				S: aws.String(REPONAME),
+			},
+		},
+		ReturnValues:     aws.String("NONE"),
+		UpdateExpression: aws.String("add files :f,commits :c"),
+		TableName:        aws.String("repos"),
+	}
+	_, err := DYNAMODB.UpdateItem(input)
+
+// Make the query and check for errors
+	return err
 }
 
 func tag(msg string) (error) {
-	// Before everything, check if the table exists
-	hasRepo, err := checkRepoExistence(REPONAME)
-	if err != nil {
-		return err
-	} else if !hasRepo {
-		return errors.New("tag failed: Table " + REPONAME + " not found")
-	}
-
 	// Build Commit struct
 	data := Tag{
-		Date: time.Now().Unix(),
+	//	Date: time.Now().Unix(),
 		File: "tagFile",
 		Text: msg,
 	}
@@ -148,56 +153,110 @@ func tag(msg string) (error) {
 	return err
 }
 
-func checkRepoExistence(repoName string) (bool, error) {
+func createRepo() (error) {
 	// Check if table exists
 	tables, err := DYNAMODB.ListTables(&dynamodb.ListTablesInput{})
 	if err != nil {
-		return false, err
+		return err
 	}
-	for _, repo := range tables.TableNames {
-		if *repo == repoName {
-			return true, nil
+	hasRepos := false
+	hasCommits := false
+	for _, table := range tables.TableNames {
+		if *table == "repos" {
+			hasRepos = true
+		}
+		if *table == "commits" {
+			hasCommits = true
 		}
 	}
 
-	return false, nil
-}
-
-func createRepo() (error) {
-	input := &dynamodb.CreateTableInput{
-		AttributeDefinitions: []*dynamodb.AttributeDefinition{
-			{
-				AttributeName: aws.String("filePath"),
-				AttributeType: aws.String("S"),
+	if !hasRepos {
+		_, err = DYNAMODB.CreateTable(
+			&dynamodb.CreateTableInput{
+				AttributeDefinitions: []*dynamodb.AttributeDefinition{
+					{
+						AttributeName: aws.String("repo"),
+						AttributeType: aws.String("S"),
+					},
+				},
+				KeySchema: []*dynamodb.KeySchemaElement{
+					{
+						AttributeName: aws.String("repo"),
+						KeyType:       aws.String("HASH"),
+					},
+				},
+				ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+					ReadCapacityUnits:  aws.Int64(25),
+					WriteCapacityUnits: aws.Int64(25),
+				},
+				TableName: aws.String("repos"),
 			},
-			{
-				AttributeName: aws.String("date"),
-				AttributeType: aws.String("N"),
-			},
-		},
-		KeySchema: []*dynamodb.KeySchemaElement{
-			{
-				AttributeName: aws.String("filePath"),
-				KeyType:       aws.String("HASH"),
-			},
-			{
-				AttributeName: aws.String("date"),
-				KeyType:       aws.String("RANGE"),
-			},
-		},
-		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(25),
-			WriteCapacityUnits: aws.Int64(25),
-		},
-		TableName: aws.String(REPONAME),
+		)
+	}
+	if err != nil {
+		return err
 	}
 
-	_, err := DYNAMODB.CreateTable(input)
+	if !hasCommits {
+		_, err = DYNAMODB.CreateTable(
+			&dynamodb.CreateTableInput{
+				AttributeDefinitions: []*dynamodb.AttributeDefinition{
+					{
+						AttributeName: aws.String("filePath"),
+						AttributeType: aws.String("S"),
+					},
+					{
+						AttributeName: aws.String("commitDate"),
+						AttributeType: aws.String("N"),
+					},
+				},
+				KeySchema: []*dynamodb.KeySchemaElement{
+					{
+						AttributeName: aws.String("filePath"),
+						KeyType:       aws.String("HASH"),
+					},
+					{
+						AttributeName: aws.String("commitDate"),
+						KeyType:       aws.String("RANGE"),
+					},
+				},
+				ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+					ReadCapacityUnits:  aws.Int64(25),
+					WriteCapacityUnits: aws.Int64(25),
+				},
+				TableName: aws.String("commits"),
+			},
+		)
+		time.Sleep(5 * time.Second)
+	}
+	if err != nil {
+		return err
+	}
 
+	// Now add the repo item
+	repo := RepoIndex{
+		Repo:         REPONAME,
+		Files:        []string{},
+		Commits:      []int64{},
+		CreationDate: time.Now().Unix(),
+		Owner:        AUTHOR,
+	}
+
+	av, err := dynamodbattribute.MarshalMap(repo)
+	if err != nil {
+		return err
+	}
+
+	input := &dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String("repos"),
+	}
+
+	// Make the query and check for errors
+	_, err = DYNAMODB.PutItem(input)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
-
