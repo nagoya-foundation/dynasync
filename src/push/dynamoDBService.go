@@ -104,7 +104,6 @@ func listRepoCommits() ([]int64, error) {
 
 func updateIndex(commit Commit) (error) {
 	date := fmt.Sprintf("%d", commit.Date)
-	fmt.Println(date)
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":c": {
@@ -125,7 +124,7 @@ func updateIndex(commit Commit) (error) {
 	}
 	_, err := DYNAMODB.UpdateItem(input)
 
-// Make the query and check for errors
+	// Make the query and check for errors
 	return err
 }
 

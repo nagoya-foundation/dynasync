@@ -6,10 +6,19 @@ import(
 )
 
 func readLocalIndex() ([]int64) {
-	indexFile, _ := os.Open(REPOPATH + "/.sync/index")
 	commits := []int64{}
 	var commit int64
-	for _, err := fmt.Fscanf(indexFile, "%d", &commit); err == nil; {
+
+	indexFile, err := os.Open(REPOPATH + "/.sync/index")
+	if err != nil {
+		return commits
+	}
+
+	for {
+		if _, err = fmt.Fscan(indexFile, &commit); err != nil {
+			break
+		}
+
 		commits = append(commits, commit)
 	}
 
@@ -21,7 +30,7 @@ func writeToLocalIndex(commits []int64) (error) {
 	// Recreate index file
 	indexFile, _ := os.Create(REPOPATH + "/.sync/index")
 	for _, commit := range commits {
-		_, err := fmt.Fprint(indexFile, commit)
+		_, err := fmt.Fprintln(indexFile, commit)
 		if err != nil {
 			return err
 		}

@@ -104,6 +104,7 @@ func commit(args []string) {
 			if i + 1 < len(args) {
 				err := diff(args[0:i], args[i + 1])
 				if err != nil {
+					fmt.Println("error making diff: " + err.Error())
 					return
 				}
 				fmt.Println("commited file(s)", args[0:i])
