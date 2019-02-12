@@ -9,12 +9,26 @@ import (
 )
 
 // Global variables
-var AUTHOR string = "default"
+
+// AUTHOR holds the author of the commit
+var AUTHOR = "default"
+
+// HOMEPATH is the path of the user's fodler
 var HOMEPATH string
+
+// REPOPATH is the absolute path of the repository
 var REPOPATH string
+
+// REPONAME is the repository name
 var REPONAME string
-var AWSPROFILE string = "default"
-var AWSREGION string = "us-east-1"
+
+// AWSPROFILE is the AWS profile used
+var AWSPROFILE = "default"
+
+// AWSREGION is the AWS region
+var AWSREGION = "us-east-1"
+
+// DYNAMODB is the unique instance of the dynamoDB service
 var DYNAMODB *dynamodb.DynamoDB
 
 // TODO: Let function receive argument and return a more detailed help
