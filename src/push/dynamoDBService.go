@@ -74,7 +74,12 @@ func getCommit(date int64) (Commit, error) {
 
 func listRepoCommits() ([]Commit, error) {
 	input := dynamodb.QueryInput{
-		KeyConditionExpression: aws.String("repo = " + REPONAME),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":v1": {
+				S: aws.String(REPONAME),
+			},
+		},
+		KeyConditionExpression: aws.String("repo = :v1"),
 		TableName:              aws.String("commits"),
 	}
 
@@ -152,6 +157,7 @@ func createRepo() error {
 	if err != nil {
 		return err
 	}
+
 	hasRepos := false
 	hasCommits := false
 	for _, table := range tables.TableNames {
@@ -163,70 +169,12 @@ func createRepo() error {
 		}
 	}
 
-	if !hasRepos {
-		_, err = DYNAMODB.CreateTable(
-			&dynamodb.CreateTableInput{
-				AttributeDefinitions: []*dynamodb.AttributeDefinition{
-					{
-						AttributeName: aws.String("repo"),
-						AttributeType: aws.String("S"),
-					},
-				},
-				KeySchema: []*dynamodb.KeySchemaElement{
-					{
-						AttributeName: aws.String("repo"),
-						KeyType:       aws.String("HASH"),
-					},
-				},
-				ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-					ReadCapacityUnits:  aws.Int64(25),
-					WriteCapacityUnits: aws.Int64(25),
-				},
-				TableName: aws.String("repos"),
-			},
-		)
-	}
-	if err != nil {
-		return err
+	if !hasCommits || !hasRepos {
+		panic("DynamoDB tables not found, make sure you done" +
+			"the configuration steps in README.md file")
 	}
 
-	if !hasCommits {
-		_, err = DYNAMODB.CreateTable(
-			&dynamodb.CreateTableInput{
-				AttributeDefinitions: []*dynamodb.AttributeDefinition{
-					{
-						AttributeName: aws.String("repo"),
-						AttributeType: aws.String("S"),
-					},
-					{
-						AttributeName: aws.String("commitDate"),
-						AttributeType: aws.String("N"),
-					},
-				},
-				KeySchema: []*dynamodb.KeySchemaElement{
-					{
-						AttributeName: aws.String("repo"),
-						KeyType:       aws.String("HASH"),
-					},
-					{
-						AttributeName: aws.String("commitDate"),
-						KeyType:       aws.String("RANGE"),
-					},
-				},
-				ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-					ReadCapacityUnits:  aws.Int64(25),
-					WriteCapacityUnits: aws.Int64(25),
-				},
-				TableName: aws.String("commits"),
-			},
-		)
-		time.Sleep(5 * time.Second)
-	}
-	if err != nil {
-		return err
-	}
-
-	// Now add the repo item
+	// Add the repo item
 	repo := RepoIndex{
 		Repo:         REPONAME,
 		Files:        []string{},
