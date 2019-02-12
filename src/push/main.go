@@ -244,6 +244,8 @@ func main() {
 			DYNAMODB = startDynamoDBSession()
 			clone(os.Args[i+1])
 			return
+		case "pull":
+			fallthrough
 		case "get":
 			findConfig()
 			DYNAMODB = startDynamoDBSession()
