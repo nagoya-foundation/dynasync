@@ -46,11 +46,12 @@ func applyCommit(commit Commit) error {
 	return nil
 }
 
-func get() {
+func getCommits() {
 	index := readLocalIndex()
 
 	// Get commits from remote table
 	commits, err := listRepoCommits()
+
 	if err != nil {
 		fmt.Println("error getting commits: " + err.Error())
 		return
@@ -58,19 +59,22 @@ func get() {
 
 	// TODO: make in O(n)
 	for _, commit := range commits {
-		applyed := false
+		applied := false
 		for _, idx := range index {
 			if idx.Date == commit.Date {
-				applyed = true
+				applied = true
 			}
 		}
-		if !applyed {
-			err = applyCommit(commit)
+		if !applied {
+			fmt.Printf(
+				"Unapplied commit: %d, file: %s, message:%s\n",
+				commit.Date, commit.File, commit.Message)
+			// err = applyCommit(commit)
 		}
 	}
 
 	// Write new contents back
-	err = writeToLocalIndex(index)
+	// err = writeToLocalIndex(index)
 	if err != nil {
 		fmt.Println("error writing index: " + err.Error())
 	}
