@@ -40,4 +40,3 @@ func clone(repo string) {
 
 	return
 }
-

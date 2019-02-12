@@ -1,21 +1,21 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"time"
-	"path/filepath"
 	"encoding/base64"
+	"fmt"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"os"
+	"path/filepath"
+	"time"
 )
 
-func diff(files []string, mess string) (error) {
+func diff(files []string, mess string) error {
 	// Backup each committed file
 	thisDir, _ := os.Getwd()
 	os.Chdir(REPOPATH)
-	for _, file := range(files) {
+	for _, file := range files {
 		// TODO: Make path system independent
-		file, pathErr := filepath.Rel(REPOPATH, thisDir + "/" + file)
+		file, pathErr := filepath.Rel(REPOPATH, thisDir+"/"+file)
 		if pathErr != nil {
 			fmt.Println("relative path error: " + pathErr.Error())
 			continue
@@ -99,16 +99,16 @@ func diff(files []string, mess string) (error) {
 
 // TODO: Open an editor to enter message
 func commit(args []string) {
-	for i := range(args) {
+	for i := range args {
 		if string(args[i]) == "-m" {
-			if i + 1 < len(args) {
-				err := diff(args[0:i], args[i + 1])
+			if i+1 < len(args) {
+				err := diff(args[0:i], args[i+1])
 				if err != nil {
 					fmt.Println("error making diff: " + err.Error())
 					return
 				}
 				fmt.Println("commited file(s)", args[0:i])
-				fmt.Println("with message", args[i + 1])
+				fmt.Println("with message", args[i+1])
 			} else {
 				fmt.Println("error: Missing message parameter")
 				showHelp()
@@ -122,4 +122,3 @@ func commit(args []string) {
 
 	return
 }
-

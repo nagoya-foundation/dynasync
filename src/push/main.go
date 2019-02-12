@@ -1,21 +1,21 @@
 package main
 
-import(
-	"os"
-	"fmt"
+import (
 	"errors"
-	"path/filepath"
+	"fmt"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"os"
+	"path/filepath"
 )
 
 // Global variables
-var AUTHOR     string = "default"
-var HOMEPATH   string
-var REPOPATH   string
-var REPONAME   string
+var AUTHOR string = "default"
+var HOMEPATH string
+var REPOPATH string
+var REPONAME string
 var AWSPROFILE string = "default"
-var AWSREGION  string = "us-east-1"
-var DYNAMODB   *dynamodb.DynamoDB
+var AWSREGION string = "us-east-1"
+var DYNAMODB *dynamodb.DynamoDB
 
 // TODO: Let function receive argument and return a more detailed help
 func showHelp() {
@@ -48,7 +48,7 @@ func showHelp() {
 	fmt.Println(" repo:		repo name")
 }
 
-func loadGlobalConfig() (error) {
+func loadGlobalConfig() error {
 	configFile, err := os.Open(HOMEPATH + "/.config/sync/global.conf")
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func loadGlobalConfig() (error) {
 	return nil
 }
 
-func findConfig() (error) {
+func findConfig() error {
 	// Try to find the config folder in parent folders
 	for REPOPATH != "/" {
 		_, err := os.Stat(REPOPATH + "/.sync/")
@@ -90,7 +90,7 @@ func findConfig() (error) {
 func initRepo(repo string) {
 
 	// Check args
-	if repo != ""  {
+	if repo != "" {
 		REPONAME = "repo-" + repo
 	} else {
 		REPONAME = "repo-" + filepath.Base(REPOPATH)
@@ -99,12 +99,12 @@ func initRepo(repo string) {
 	// Load global config if exists
 	_, err := os.Stat(HOMEPATH + "/.config/sync/global.conf")
 	if err != nil {
-		os.MkdirAll(HOMEPATH + "/.config/sync", 0777)
+		os.MkdirAll(HOMEPATH+"/.config/sync", 0777)
 		globalConfFile, err := os.Create(HOMEPATH + "/.config/sync/global.conf")
 		_, err = globalConfFile.Write([]byte(
 			"profile: " + AWSPROFILE + "\n" +
-			"region: " + AWSREGION + "\n"))
-			globalConfFile.Close()
+				"region: " + AWSREGION + "\n"))
+		globalConfFile.Close()
 		if err != nil {
 			panic("error writing global config file: " + err.Error())
 		}
@@ -113,9 +113,9 @@ func initRepo(repo string) {
 	}
 
 	// Local repo config
-	os.MkdirAll(REPOPATH + "/.sync", 0777)
+	os.MkdirAll(REPOPATH+"/.sync", 0777)
 	os.RemoveAll(REPOPATH + "/.sync/diff")
-	os.MkdirAll(REPOPATH + "/.sync/diff", 0777)
+	os.MkdirAll(REPOPATH+"/.sync/diff", 0777)
 
 	// Create .sync/repo.conf file
 	_, err = os.Stat(REPOPATH + "/.sync/repo.conf")
@@ -128,8 +128,8 @@ func initRepo(repo string) {
 
 		_, err = configFile.Write([]byte(
 			"name: " + REPONAME + "\n" +
-			"profile: " + AWSPROFILE + "\n" +
-			"region: " + AWSREGION + "\n"))
+				"profile: " + AWSPROFILE + "\n" +
+				"region: " + AWSREGION + "\n"))
 		if err != nil {
 			panic("error writing to config file: " + err.Error())
 		}
@@ -152,7 +152,7 @@ func main() {
 	REPOPATH, _ = os.Getwd()
 
 	if len(os.Args) == 1 {
-		fmt.Println("Dynasync v1.0.0: A very simple version control system")
+		fmt.Println("Dynasync v1.0.0: A simple version control system")
 		showHelp()
 		return
 	}
@@ -161,21 +161,21 @@ func main() {
 	for i := 1; i < len(os.Args); i++ {
 		switch os.Args[i] {
 		case "--aws-profile":
-			if i + 2 > len(os.Args) {
+			if i+2 > len(os.Args) {
 				fmt.Println("error: missing argument")
 				showHelp()
 				return
 			}
-			AWSPROFILE = os.Args[i + 1]
+			AWSPROFILE = os.Args[i+1]
 			i++
 			break
 		case "--aws-region":
-			if i + 2 > len(os.Args) {
+			if i+2 > len(os.Args) {
 				fmt.Println("error: missing argument")
 				showHelp()
 				return
 			}
-			AWSREGION = os.Args[i + 1]
+			AWSREGION = os.Args[i+1]
 			i++
 			break
 		case "--help":
@@ -183,15 +183,15 @@ func main() {
 		case "help":
 			fallthrough
 		case "-h":
-			fmt.Println("Dynasync v1.0.0: A very simple version control system")
+			fmt.Println("Dynasync v1.0.0: A simple version control system")
 			showHelp()
 			return
 		case "init":
 			DYNAMODB = startDynamoDBSession()
-			if i + 2 > len(os.Args) {
+			if i+2 > len(os.Args) {
 				initRepo("")
 			} else {
-				initRepo(os.Args[i + 1])
+				initRepo(os.Args[i+1])
 			}
 			return
 		case "commit":
@@ -201,10 +201,10 @@ func main() {
 			}
 
 			DYNAMODB = startDynamoDBSession()
-			commit(os.Args[i + 1:])
+			commit(os.Args[i+1:])
 			return
 		case "tag":
-			if i + 2 > len(os.Args) {
+			if i+2 > len(os.Args) {
 				fmt.Println("error: missing argument")
 				showHelp()
 				return
@@ -215,20 +215,20 @@ func main() {
 			}
 
 			DYNAMODB = startDynamoDBSession()
-			err := tag(os.Args[i + 1])
+			err := tag(os.Args[i+1])
 			if err != nil {
 				fmt.Println("error taging: " + err.Error())
 			}
 			return
 		case "clone":
-			if i + 2 > len(os.Args) {
+			if i+2 > len(os.Args) {
 				fmt.Println("error: missing argument")
 				showHelp()
 				return
 			}
 
 			DYNAMODB = startDynamoDBSession()
-			clone(os.Args[i + 1])
+			clone(os.Args[i+1])
 			return
 		case "get":
 			findConfig()
@@ -242,4 +242,3 @@ func main() {
 		}
 	}
 }
-

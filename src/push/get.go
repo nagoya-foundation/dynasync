@@ -1,28 +1,28 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"encoding/base64"
+	"fmt"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"os"
 )
 
 func setDiff(a []int64, b []int64) (diff []int64) {
-      m := map[int64]bool{}
+	m := map[int64]bool{}
 
-      for _, item := range b {
-              m[item] = true
-      }
+	for _, item := range b {
+		m[item] = true
+	}
 
-      for _, item := range a {
-              if _, ok := m[item]; !ok {
-                      diff = append(diff, item)
-              }
-      }
-      return
+	for _, item := range a {
+		if _, ok := m[item]; !ok {
+			diff = append(diff, item)
+		}
+	}
+	return
 }
 
-func applyCommit(commitDate int64) (error) {
+func applyCommit(commitDate int64) error {
 	dmp := diffmatchpatch.New()
 
 	// Get commit from remote table
@@ -81,4 +81,3 @@ func get() {
 		fmt.Println("error writing index: " + err.Error())
 	}
 }
-
