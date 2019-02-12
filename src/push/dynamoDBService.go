@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"time"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"time"
 )
 
-func startDynamoDBSession() (*dynamodb.DynamoDB) {
+func startDynamoDBSession() *dynamodb.DynamoDB {
 
 	// Start a session with DynamoDB
 	sess := session.Must(
@@ -26,16 +26,15 @@ func startDynamoDBSession() (*dynamodb.DynamoDB) {
 	return dynamodb.New(sess)
 }
 
-func sendCommit(commit Commit) (error) {
+func sendCommit(commit Commit) error {
 	av, err := dynamodbattribute.MarshalMap(commit)
 	if err != nil {
 		return err
 	}
 
 	input := &dynamodb.PutItemInput{
-		Item:                av,
-		ConditionExpression: aws.String("attribute_not_exists(commitDate)"),
-		TableName:           aws.String("commits"),
+		Item:      av,
+		TableName: aws.String("commits"),
 	}
 
 	// Make the query and check for errors
@@ -73,36 +72,31 @@ func getCommit(date int64) (Commit, error) {
 	return commit, nil
 }
 
-func listRepoCommits() ([]int64, error) {
-	input := dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"repo": {
-				S: aws.String(REPONAME),
-			},
-		},
-		ProjectionExpression: aws.String("commits"),
-		TableName:            aws.String("repos"),
+func listRepoCommits() ([]Commit, error) {
+	input := dynamodb.QueryInput{
+		KeyConditionExpression: aws.String("repo = " + REPONAME),
+		TableName:              aws.String("commits"),
 	}
 
 	// TODO: Implement pagination
-	result, err := DYNAMODB.GetItem(&input)
+	result, err := DYNAMODB.Query(&input)
 
 	if err != nil {
 		return nil, err
 	}
 
-	var repo RepoIndex
+	var commits []Commit
 
-	err = dynamodbattribute.UnmarshalMap(result.Item, &repo)
+	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, &commits)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return repo.Commits, nil
+	return commits, nil
 }
 
-func updateIndex(commit Commit) (error) {
+func updateIndex(commit Commit) error {
 	date := fmt.Sprintf("%d", commit.Date)
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
@@ -128,10 +122,10 @@ func updateIndex(commit Commit) (error) {
 	return err
 }
 
-func tag(msg string) (error) {
+func tag(msg string) error {
 	// Build Commit struct
 	data := Tag{
-	//	Date: time.Now().Unix(),
+		//	Date: time.Now().Unix(),
 		File: "tagFile",
 		Text: msg,
 	}
@@ -152,7 +146,7 @@ func tag(msg string) (error) {
 	return err
 }
 
-func createRepo() (error) {
+func createRepo() error {
 	// Check if table exists
 	tables, err := DYNAMODB.ListTables(&dynamodb.ListTablesInput{})
 	if err != nil {
@@ -201,7 +195,7 @@ func createRepo() (error) {
 			&dynamodb.CreateTableInput{
 				AttributeDefinitions: []*dynamodb.AttributeDefinition{
 					{
-						AttributeName: aws.String("filePath"),
+						AttributeName: aws.String("repo"),
 						AttributeType: aws.String("S"),
 					},
 					{
@@ -211,7 +205,7 @@ func createRepo() (error) {
 				},
 				KeySchema: []*dynamodb.KeySchemaElement{
 					{
-						AttributeName: aws.String("filePath"),
+						AttributeName: aws.String("repo"),
 						KeyType:       aws.String("HASH"),
 					},
 					{

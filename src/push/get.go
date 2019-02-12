@@ -22,11 +22,11 @@ func setDiff(a []int64, b []int64) (diff []int64) {
 	return
 }
 
-func applyCommit(commitDate int64) error {
+func applyCommit(commit Commit) error {
 	dmp := diffmatchpatch.New()
 
 	// Get commit from remote table
-	commit, err := getCommit(commitDate)
+	commit, err := getCommit(commit.Date)
 	patches, err := dmp.PatchFromText(commit.Diff)
 	if err != nil {
 		return err
@@ -71,8 +71,17 @@ func get() {
 		return
 	}
 
-	for _, commit := range setDiff(commits, index) {
-		err = applyCommit(commit)
+	// TODO: make in O(n)
+	for _, commit := range commits {
+		applyed := false
+		for _, idx := range index {
+			if idx.Date == commit.Date {
+				applyed = true
+			}
+		}
+		if !applyed {
+			err = applyCommit(commit)
+		}
 	}
 
 	// Write new contents back

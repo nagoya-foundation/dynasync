@@ -1,13 +1,13 @@
 package main
 
-import(
-	"os"
+import (
 	"fmt"
+	"os"
 )
 
-func readLocalIndex() ([]int64) {
-	commits := []int64{}
-	var commit int64
+func readLocalIndex() []Commit {
+	commits := []Commit{}
+	var commit Commit
 
 	indexFile, err := os.Open(REPOPATH + "/.sync/index")
 	if err != nil {
@@ -26,7 +26,7 @@ func readLocalIndex() ([]int64) {
 	return commits
 }
 
-func writeToLocalIndex(commits []int64) (error) {
+func writeToLocalIndex(commits []Commit) error {
 	// Recreate index file
 	indexFile, _ := os.Create(REPOPATH + "/.sync/index")
 	for _, commit := range commits {
@@ -39,4 +39,3 @@ func writeToLocalIndex(commits []int64) (error) {
 
 	return nil
 }
-

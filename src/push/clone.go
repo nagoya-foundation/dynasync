@@ -23,13 +23,13 @@ func clone(repo string) {
 	initRepo(repo)
 
 	// Download files from table
-	commitIds, err := listRepoCommits()
+	commits, err := listRepoCommits()
 	if err != nil {
 		fmt.Println("error getting commits: " + err.Error())
 		return
 	}
 
-	for _, commit := range commitIds {
+	for _, commit := range commits {
 		// Apply commit
 		err = applyCommit(commit)
 		if err != nil {

@@ -64,6 +64,7 @@ func diff(files []string, mess string) error {
 
 		// Build Commit struct
 		commitData := Commit{
+			Repo:    REPONAME,
 			File:    file,
 			Date:    time.Now().Unix(),
 			Diff:    diff,
@@ -88,7 +89,7 @@ func diff(files []string, mess string) error {
 		index := readLocalIndex()
 
 		// Write new contents back
-		newIndex := append(index, commitData.Date)
+		newIndex := append(index, commitData)
 		err = writeToLocalIndex(newIndex)
 		if err != nil {
 			return err
