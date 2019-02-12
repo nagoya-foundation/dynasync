@@ -1,6 +1,8 @@
 # dynasync
 
-> A project to sincronize local files with AWS DynamoDB service. Here we implement a very simple versioning system, barely with commit and tag only. The intention is to simplify workflow by providing an easy to learn solution.
+> A project to synchronize local files with AWS DynamoDB service. Here we
+implement a very simple versioning system, barely with commit and tag only.
+The intention is to simplify work flow by providing an easy to learn solution.
 
 ## Prerequisites
 
@@ -8,19 +10,34 @@
 
 ## Building
 
-Run `go install` inside the *src/dynasync* folder. You may want to move the generated binary to a location in your `$PATH`. 
+Run `go install` inside the *src/dynasync* folder. You may want to move the
+generated binary to a location in your `$PATH`.
 
 ## Configuring
 
-First, read the master branch README.md, then create a folder and enter it, finally run the command `dynasync init [name]`, `name` is optional, by default it will use the current folder name.
+You must create two tables in DynamoDB and grant access to the user you are
+use in your local AWS configuration, those two tables must be as follows:
+
+- Table "commits":
+  - Hash key: "repo", type string
+  - Range key: "commitDate", type number
+
+- Table "repos":
+  - Hash key: "repo", type string
+
+The capacity is up to you to decide
+
+Then you can run the command `dynasync init [name]`, `name` is optional, by default it will use the current folder name, to start a dynasync repo on that
+folder.
 
 ## Meta
 
-Created by: Brian Mayer - bleemayer@gmail.com 
+Created by: Brian Mayer - bleemayer@gmail.com
 
-Initial commit: November, 23, 2018 
+Initial commit: November, 23, 2018
 
-Distributed under The BSD3-clause license. See [LICENSE](LICENSE) for more information.
+Distributed under The BSD3-clause license. See [LICENSE](LICENSE) for more
+information.
 
 ### Current work
 
@@ -29,4 +46,5 @@ Distributed under The BSD3-clause license. See [LICENSE](LICENSE) for more infor
 
 ### Contributing
 
-Check the [contributing](CONTRIBUTING.md) file for details, but, in advance, it is pretty intuitive and straightforward.
+Check the [contributing](CONTRIBUTING.md) file for details, but, in advance, it
+is pretty intuitive and straightforward.
