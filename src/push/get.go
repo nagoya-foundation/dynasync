@@ -7,21 +7,6 @@ import (
 	"os"
 )
 
-func setDiff(a []int64, b []int64) (diff []int64) {
-	m := map[int64]bool{}
-
-	for _, item := range b {
-		m[item] = true
-	}
-
-	for _, item := range a {
-		if _, ok := m[item]; !ok {
-			diff = append(diff, item)
-		}
-	}
-	return
-}
-
 func applyCommit(commit Commit) error {
 	dmp := diffmatchpatch.New()
 
