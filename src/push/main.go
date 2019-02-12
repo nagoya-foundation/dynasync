@@ -244,12 +244,21 @@ func main() {
 			DYNAMODB = startDynamoDBSession()
 			clone(os.Args[i+1])
 			return
+		case "status":
+			if findConfig() != nil {
+				fmt.Println("error: Config file not found")
+				return
+			}
+
+			DYNAMODB = startDynamoDBSession()
+			status()
+			return
 		case "pull":
 			fallthrough
 		case "get":
 			findConfig()
 			DYNAMODB = startDynamoDBSession()
-			get()
+			getCommits()
 			return
 		default:
 			fmt.Println("error: illegal option", os.Args[i])
