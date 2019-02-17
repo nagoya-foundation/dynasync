@@ -67,7 +67,7 @@ func getCommits() {
 		}
 		if !applied {
 			fmt.Printf(
-				"Unapplied commit: %d, file: %s, message:%s\n",
+				"Undone commit: %d, file: %s, message:%s\n",
 				commit.Date, commit.File, commit.Message)
 			// err = applyCommit(commit)
 		}

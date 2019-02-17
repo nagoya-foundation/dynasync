@@ -108,7 +108,7 @@ func commit(args []string) {
 					fmt.Println("error making diff: " + err.Error())
 					return
 				}
-				fmt.Println("commited file(s)", args[0:i])
+				fmt.Println("committed file(s)", args[0:i])
 				fmt.Println("with message", args[i+1])
 			} else {
 				fmt.Println("error: Missing message parameter")

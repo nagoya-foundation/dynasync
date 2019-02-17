@@ -13,7 +13,7 @@ import (
 // AUTHOR holds the author of the commit
 var AUTHOR = "default"
 
-// HOMEPATH is the path of the user's fodler
+// HOMEPATH is the path of the user's folder
 var HOMEPATH string
 
 // REPOPATH is the absolute path of the repository
@@ -231,7 +231,7 @@ func main() {
 			DYNAMODB = startDynamoDBSession()
 			err := tag(os.Args[i+1])
 			if err != nil {
-				fmt.Println("error taging: " + err.Error())
+				fmt.Println("error tagging: " + err.Error())
 			}
 			return
 		case "clone":
