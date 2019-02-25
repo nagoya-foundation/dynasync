@@ -25,7 +25,8 @@ func diff(files []string, mess string) error {
 		fileConn, errFile := os.Open(file)
 
 		if errFile != nil {
-			panic("error reading file to commit: " + errFile.Error())
+			panic("error reading file to commit: " +
+				errFile.Error())
 		}
 
 		// Copy original file contents to buffer
@@ -105,7 +106,8 @@ func commit(args []string) {
 			if i+1 < len(args) {
 				err := diff(args[0:i], args[i+1])
 				if err != nil {
-					fmt.Println("error making diff: " + err.Error())
+					fmt.Println("error making diff: " +
+						err.Error())
 					return
 				}
 				fmt.Println("committed file(s)", args[0:i])

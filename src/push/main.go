@@ -158,7 +158,6 @@ func initRepo(repo string) {
 	fmt.Println("done")
 }
 
-// TODO: Create status function
 func main() {
 	// Keep track of the repo path
 	HOMEPATH = os.Getenv("HOME")
@@ -166,7 +165,7 @@ func main() {
 	REPOPATH, _ = os.Getwd()
 
 	if len(os.Args) == 1 {
-		fmt.Println("Dynasync v1.0.0: A simple version control system")
+		fmt.Println("Dynasync v1.0.0: A version control system")
 		showHelp()
 		return
 	}
@@ -197,7 +196,7 @@ func main() {
 		case "help":
 			fallthrough
 		case "-h":
-			fmt.Println("Dynasync v1.0.0: A simple version control system")
+			fmt.Println("Dynasync v1.0.0: A version control system")
 			showHelp()
 			return
 		case "init":
@@ -251,7 +250,7 @@ func main() {
 			}
 
 			DYNAMODB = startDynamoDBSession()
-			status()
+			getCommits()
 			return
 		case "pull":
 			fallthrough

@@ -27,7 +27,8 @@ use in your local AWS configuration, those two tables must be as follows:
 
 The capacity is up to you to decide
 
-Then you can run the command `dynasync init [name]`, `name` is optional, by default it will use the current folder name, to start a dynasync repo on that
+Then you can run the command `dynasync init [name]`, `name` is optional, by
+default it will use the current folder name, to start a dynasync repo on that
 folder.
 
 ## Meta
