@@ -259,6 +259,9 @@ func main() {
 			DYNAMODB = startDynamoDBSession()
 			getCommits()
 			return
+		case "status":
+			showStatus()
+			return
 		default:
 			fmt.Println("error: illegal option", os.Args[i])
 			showHelp()
