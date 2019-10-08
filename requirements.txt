@@ -9,7 +9,6 @@ future==0.16.0
 idna==2.6
 jmespath==0.9.3
 macholib==1.9
-nltk==3.2.5
 pefile==2017.11.5
 pipreqs==0.4.9
 PyInstaller==3.3.1
@@ -19,5 +18,5 @@ requests==2.20.0
 s3transfer==0.1.13
 six==1.11.0
 tqdm==4.23.4
-urllib3==1.23
+urllib3==1.24.2
 yarg==0.1.9
