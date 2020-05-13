@@ -106,7 +106,7 @@ def set_deleted(file, mtime):
     config.index.put_item(
         Item={
             'filePath': file,
-            'mtime':    Decimal(mtime),
+            'mtime':    int(mtime),
             'deleted':  True
         }
     )
@@ -141,7 +141,7 @@ def get_file(file_name):
             return
 
         # Wait based on consumed capacity
-        cons=new_file['ConsumedCapacity']['CapacityUnits'] / \
+        cons = new_file['ConsumedCapacity']['CapacityUnits'] / \
             20 - time() + start
 
         if cons > 0:
@@ -150,7 +150,7 @@ def get_file(file_name):
 
 # TODO: Implement modification time filter as parameter
 def list_remote_files():
-    query={
+    query = {
         "ExpressionAttributeNames": {
             '#fp': 'filePath',
             '#cl': 'fileSize',
@@ -161,25 +161,25 @@ def list_remote_files():
         "FilterExpression": 'deleted = :a'
     }
 
-    scan_result=config.index.scan(query, IndexName='meta-index')
+    scan_result = config.index.scan(query, IndexName='meta-index')
     for fi in scan_result['Items']:
-        name=fi['filePath']
-        size=fi.get('fileSize', 0)
-        m_time=int(fi['mtime'])
+        name = fi['filePath']
+        size = fi.get('fileSize', 0)
+        m_time = int(fi['mtime'])
         print(f'{size}\t{m_time}\t{name}')
 
     # Keep scanning until all results are received
     while 'LastEvaluatedKey' in scan_result.keys():
         # Scan from the last result
-        scan_result=config.index.scan(
+        scan_result = config.index.scan(
             query,
             IndexName='meta-index',
             ExclusiveStartKey=scan_result['LastEvaluatedKey']
         )
         for fi in scan_result['Items']:
-            name=fi['filePath']
-            size=fi.get('fileSize', 0)
-            m_time=fi['mtime']
+            name = fi['filePath']
+            size = fi.get('fileSize', 0)
+            m_time = fi['mtime']
             print(f'{size}\t{m_time}\t{name}')
 
 
