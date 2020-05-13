@@ -87,22 +87,18 @@ def sendFile(file_name):
             pass
 
     # Update index regardless of the size
-    updateIndex(file, hashes, mtime)
-
-def updateIndex(file, chunkList, mtime):
-    # Start the clock
-    start = time()
-
-    # TODO: use try-catch
-    newIndex = index.put_item(
-        Item = {
-            'filePath': file,
-            'mtime':    Decimal(mtime),
-            'deleted':  False,
-            'chunks':   chunkList
-        },
-        ReturnConsumedCapacity = 'TOTAL'
-    )
+    try:
+        config.index.put_item(
+            Item={
+                'filePath': file_path,
+                'fileSize': fileLen,
+                'mtime':    Decimal(mtime),
+                'deleted':  False,
+                'chunks':   hashes
+            }
+        )
+    except Exception as e:
+        print(e)
 
 
 def setDeleted(file, mtime):
