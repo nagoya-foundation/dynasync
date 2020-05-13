@@ -147,16 +147,16 @@ def getFile(file, chunks):
 
 
 # TODO: Implement modification time filter as parameter
-def getRemoteFiles():
-
+def listRemoteFiles():
     query = {
         "ExpressionAttributeNames": {
-            '#fp': 'filePath', '#cl': 'chunks', '#mt': 'mtime'
+            '#fp': 'filePath',
+            '#cl': 'fileSize',
+            '#mt': 'mtime'
         },
-        "ExpressionAttributeValues": {':a': False},
+        "ExpressionAttributeValues": {':a': 'false'},
         "ProjectionExpression": '#fp, #mt, #cl',
-        "FilterExpression": 'deleted = :a',
-        "ReturnConsumedCapacity": 'TOTAL'
+        "FilterExpression": 'deleted = :a'
     }
 
     print("Querying files in remote table.")
