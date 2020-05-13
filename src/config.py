@@ -4,12 +4,11 @@
 # -------------------------------------------------------------------------- #
 
 import os
+from sys import exit
 import time
 import json
 import boto3
-import argparse
 
-# ---- Command line arguments ----------------------------------------------- #
 
 _config_file = os.path.expanduser("~/.config/dynasync.conf")
 _dynamo = None
@@ -21,11 +20,6 @@ table = None
 
 # ---- Configure ------------------------------------------------------------ #
 
-# Now we create the .config directory if needed
-config_dir = os.path.expanduser("~/.config/dynasync")
-if not os.path.exists(config_dir):
-    os.makedirs(config_dir)
-    print("~/.config/dynasync directory created.")
 
 def load():
     global index, table
@@ -67,11 +61,6 @@ def make():
     with open(_config_file, 'w') as file:
         file.write('{"profile": "' + profile + '"}')
 
-with open(config_file, 'r') as file:
-    __configs = json.load(file)
-    track_dirs = __configs['dir']
-    collectionName = __configs['collection']
-    profile = __configs.get('profile', 'default')
 
 def create_tables():
     _dynamo.create_table(
