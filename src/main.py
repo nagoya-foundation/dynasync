@@ -183,18 +183,10 @@ def listRemoteFiles():
     # Reformat into a dictionary
     remote_files = {}
     for fi in table_files:
-        candidate = remote_files.get(fi['filePath'], {'mtime': 0})
-        if candidate['mtime'] < fi['mtime']:
-            remote_files[fi['filePath']] = {
-                'mtime': fi['mtime'],
-                'chunks': fi['chunks']
-            }
-
-
-    return remote_files
-
-# Function to initialize local indexes
-def sync():
+        name = fi['filePath']
+        size = fi.get('fileSize', 0)
+        m_time = fi['mtime']
+        print(f'{size}\t{m_time}\t{name}')
 
     # Put all files in a list
     local_files = {}
