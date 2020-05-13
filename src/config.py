@@ -54,8 +54,59 @@ with open(config_file, 'r') as file:
     collectionName = __configs['collection']
     profile = __configs.get('profile', 'default')
 
-# Check if configured dir exists
-if not os.path.exists(os.path.expanduser(track_dirs)):
-    print("Entered directory does not exists! Program will fail.")
-    exit(-1)
+def create_tables():
+    _dynamo.create_table(
+        TableName='dynasync',
+        AttributeDefinitions=[
+            {
+                'AttributeName': 'chunkid',
+                'AttributeType': 'S'
+            }
+        ],
+        KeySchema=[
+            {
+                'AttributeName': 'chunkid',
+                'KeyType': 'HASH'
+            }
+        ],
+        ProvisionedThroughput={
+            'ReadCapacityUnits': 20,
+            'WriteCapacityUnits': 24
+        },
+        SSESpecification={
+            'Enabled': True
+        }
+    )
+    time.sleep(5)
 
+    _dynamo.create_table(
+        TableName='dynasyncIndex',
+        AttributeDefinitions=[
+            {
+                'AttributeName': 'filePath',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'mtime',
+                'AttributeType': 'N'
+            }
+        ],
+        KeySchema=[
+            {
+                'AttributeName': 'filePath',
+                'KeyType': 'HASH'
+            },
+            {
+                'AttributeName': 'mtime',
+                'KeyType': 'RANGE'
+            }
+        ],
+        ProvisionedThroughput={
+            'ReadCapacityUnits': 5,
+            'WriteCapacityUnits': 1
+        },
+        SSESpecification={
+            'Enabled': True
+        }
+    )
+    print("tables created")
