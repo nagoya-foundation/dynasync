@@ -107,9 +107,8 @@ track_dirs = os.path.expanduser(config.track_dirs)
 # ==== Function definitions ============================+++++==================
 
 # Send a file to remote table
-def sendFile(file):
-    # Expand ~ in file path
-    file_path = os.path.join(track_dirs, file)
+def sendFile(file_name):
+    file_path = os.path.abspath(file_name)
 
     # Open file and compress its contents
     with open(file_path, 'rb') as file_con:
@@ -123,7 +122,7 @@ def sendFile(file):
     # as each chunk contains the maximum of 399,901 bytes of the file, so we
     # multiply, and the file size is 4.997.212.883,625 bytes, roughly 4.99GB.
     if fileLen > 4997212883:
-        print("File " + file + " is too large (> 4,99 GB), skipping...")
+        print("File " + file_path + " is too large (> 4,99 GB), skipping...")
         return 0
 
     # Zero length files may corrupt good files
@@ -138,7 +137,7 @@ def sendFile(file):
     chunks = math.ceil(fileLen/399901)
     hashes = []
     ck = 0
-    for ck in tqdm.trange(chunks, ascii=True, desc=os.path.basename(file)):
+    for ck in trange(chunks, ascii=True, desc=file_path):
         # Start the clock
         start = time()
 
@@ -150,12 +149,12 @@ def sendFile(file):
 
         # Try to send the chunk
         try:
-            new_item = table.put_item(
-                Item = {
+            config.table.put_item(
+                Item={
                     'chunkid': hash,
                     'content': lzma.compress(chunk)
                 },
-                ConditionExpression = 'attribute_not_exists(chunkid)'
+                ConditionExpression='attribute_not_exists(chunkid)'
             )
 
             # Wait a sec to preserve throughput
