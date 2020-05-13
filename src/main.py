@@ -104,14 +104,8 @@ def updateIndex(file, chunkList, mtime):
         ReturnConsumedCapacity = 'TOTAL'
     )
 
-    # Wait a sec to preserve throughput
-    consu = newIndex['ConsumedCapacity']['CapacityUnits'] - time() + start
-
-    if consu > 0:
-        sleep(consu)
 
 def setDeleted(file, mtime):
-    print("File " + file + " deleted, updating.")
     # TODO: use try-catch
     config.index.put_item(
         Item={
