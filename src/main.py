@@ -362,8 +362,15 @@ if __name__ == '__main__':
         # Run initialization
         sync()
 
-    except KeyboardInterrupt:
-        print('Interrupted by user. Exiting program...')
-        exit(0)
+# Main execution
+if sys.argv[1] == 'init':
+    config.make()
+    sys.exit(0)
+elif sys.argv[1] == 'create_tables':
+    config.create_tables()
+    sys.exit(0)
 
+config.load()
 
+if sys.argv[1] == 'list':
+    listRemoteFiles()
