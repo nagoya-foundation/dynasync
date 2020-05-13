@@ -115,6 +115,31 @@ def create_tables():
         },
         SSESpecification={
             'Enabled': True
-        }
+        },
+        GlobalSecondaryIndexes=[
+            {
+                'IndexName': 'meta-index',
+                'KeySchema': [
+                    {
+                        'AttributeName': 'deleted',
+                        'KeyType': 'HASH'
+                    },
+                    {
+                        'AttributeName': 'filePath',
+                        'KeyType': 'RANGE'
+                    }
+                ],
+                'Projection': {
+                    'ProjectionType': 'INCLUDE',
+                    'NonKeyAttributes': [
+                        'filePath', 'deleted', 'mtime', 'fileSize'
+                    ]
+                },
+                'ProvisionedThroughput': {
+                    'ReadCapacityUnits': 3,
+                    'WriteCapacityUnits': 2
+                }
+            }
+        ]
     )
     print("tables created")
