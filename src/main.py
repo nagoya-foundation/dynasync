@@ -159,34 +159,26 @@ def listRemoteFiles():
         "FilterExpression": 'deleted = :a'
     }
 
-    print("Querying files in remote table.")
-    # TODO: use try-catch
-    scanResult = index.scan(query)
-    table_files = scanResult['Items']
-
-    # Keep scanning until all results are received
-    while 'LastEvaluatedKey' in scanResult.keys():
-        # Wait if needed
-        if scanResult['ConsumedCapacity']['CapacityUnits'] > 5:
-            sleep(scanResult['ConsumedCapacity']['CapacityUnits']/5)
-
-        # Scan from the last result
-        # TODO: use try-catch
-        scanResult = index.scan(
-            query,
-            ExclusiveStartKey = scanResult['LastEvaluatedKey']
-        )
-
-        # Merge all items
-        table_files.extend(scanResult['Items'])
-
-    # Reformat into a dictionary
-    remote_files = {}
-    for fi in table_files:
+    scan_result = config.index.scan(query, IndexName='meta-index')
+    for fi in scan_result['Items']:
         name = fi['filePath']
         size = fi.get('fileSize', 0)
         m_time = fi['mtime']
         print(f'{size}\t{m_time}\t{name}')
+
+    # Keep scanning until all results are received
+    while 'LastEvaluatedKey' in scan_result.keys():
+        # Scan from the last result
+        scan_result = config.index.scan(
+            query,
+            IndexName='meta-index',
+            ExclusiveStartKey=scan_result['LastEvaluatedKey']
+        )
+        for fi in scan_result['Items']:
+            name = fi['filePath']
+            size = fi.get('fileSize', 0)
+            m_time = fi['mtime']
+            print(f'{size}\t{m_time}\t{name}')
 
 
 # Main execution
