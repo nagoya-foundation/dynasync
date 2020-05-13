@@ -18,15 +18,15 @@ import math
 import os
 import sys
 import lzma
-from tqdm import trange
+from tqdm import tqdm
 import config
 from time import time, sleep
 from hashlib import md5
-from decimal import Decimal
+from boto3.dynamodb.conditions import Key, Attr
 
 
 # Send a file to remote table
-def sendFile(file_name):
+def send_file(file_name):
     file_path = os.path.abspath(file_name)
 
     # Open file and compress its contents
@@ -56,7 +56,7 @@ def sendFile(file_name):
     chunks = math.ceil(fileLen/399901)
     hashes = []
     ck = 0
-    for ck in trange(chunks, ascii=True, desc=file_path):
+    for ck in tqdm(chunks, ascii=True, desc=file_path):
         # Start the clock
         start = time()
 
@@ -92,8 +92,8 @@ def sendFile(file_name):
             Item={
                 'filePath': file_path,
                 'fileSize': fileLen,
-                'mtime':    Decimal(mtime),
-                'deleted':  False,
+                'mtime':    int(mtime),
+                'deleted':  'false',
                 'chunks':   hashes
             }
         )
@@ -101,7 +101,7 @@ def sendFile(file_name):
         print(e)
 
 
-def setDeleted(file, mtime):
+def set_deleted(file, mtime):
     # TODO: use try-catch
     config.index.put_item(
         Item={
@@ -112,12 +112,19 @@ def setDeleted(file, mtime):
     )
 
 
-def getFile(file, chunks):
-    # Initialize empty file contents variable
-    content = b''
+def get_file(file_name):
+    file_info = config.index.query(
+        IndexName='filePath-index',
+        KeyConditionExpression=Key('filePath').eq(file_name)
+    )
+    if len(file_info['Items']) == 0:
+        print('file not found', file=sys.stderr)
+        return
+
+    chunks = file_info['Items'][0]['chunks']
 
     # Get each chunk
-    for chunk in trange(chunks, ascii=True, desc=os.path.basename(file)):
+    for chunk in tqdm(chunks, ascii=True, desc=file_name, file=sys.stderr):
         start = time()
         try:
             new_file = config.table.get_item(
@@ -127,28 +134,23 @@ def getFile(file, chunks):
                 ReturnConsumedCapacity='TOTAL'
             )
             # Collect chunk's contents
-            content += lzma.decompress(new_file['Item']['content'].value)
+            os.write(1, lzma.decompress(new_file['Item']['content'].value))
 
-        except KeyboardInterrupt:
-            exit()
-
-        except:
-            print("Chunk " + chunk + " not found, file will not be saved!")
+        except Exception as e:
+            print(e, file=sys.stderr)
             return
 
         # Wait based on consumed capacity
-        cons = new_file['ConsumedCapacity']['CapacityUnits'] / \
+        cons=new_file['ConsumedCapacity']['CapacityUnits'] / \
             20 - time() + start
 
         if cons > 0:
             sleep(cons)
 
-    print(content)
-
 
 # TODO: Implement modification time filter as parameter
-def listRemoteFiles():
-    query = {
+def list_remote_files():
+    query={
         "ExpressionAttributeNames": {
             '#fp': 'filePath',
             '#cl': 'fileSize',
@@ -159,25 +161,25 @@ def listRemoteFiles():
         "FilterExpression": 'deleted = :a'
     }
 
-    scan_result = config.index.scan(query, IndexName='meta-index')
+    scan_result=config.index.scan(query, IndexName='meta-index')
     for fi in scan_result['Items']:
-        name = fi['filePath']
-        size = fi.get('fileSize', 0)
-        m_time = fi['mtime']
+        name=fi['filePath']
+        size=fi.get('fileSize', 0)
+        m_time=int(fi['mtime'])
         print(f'{size}\t{m_time}\t{name}')
 
     # Keep scanning until all results are received
     while 'LastEvaluatedKey' in scan_result.keys():
         # Scan from the last result
-        scan_result = config.index.scan(
+        scan_result=config.index.scan(
             query,
             IndexName='meta-index',
             ExclusiveStartKey=scan_result['LastEvaluatedKey']
         )
         for fi in scan_result['Items']:
-            name = fi['filePath']
-            size = fi.get('fileSize', 0)
-            m_time = fi['mtime']
+            name=fi['filePath']
+            size=fi.get('fileSize', 0)
+            m_time=fi['mtime']
             print(f'{size}\t{m_time}\t{name}')
 
 
@@ -192,4 +194,6 @@ elif sys.argv[1] == 'create_tables':
 config.load()
 
 if sys.argv[1] == 'list':
-    listRemoteFiles()
+    list_remote_files()
+elif sys.argv[1] == 'get':
+    get_file(sys.argv[2])
