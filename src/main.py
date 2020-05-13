@@ -145,22 +145,6 @@ def getFile(file, chunks):
 
     print(content)
 
-# Get all files under the selected dir
-def collectFiles(dir, files):
-    # List files in current directory
-    dir_files = os.listdir(dir)
-
-    # Search through all files
-    for filename in dir_files:
-        file_path = os.path.join(dir, filename)
-
-        # Check if it's a normal file or directory
-        if os.path.isfile(file_path):
-            path = os.path.relpath(file_path, track_dirs)
-            files[path] = os.path.getmtime(file_path)
-        else:
-            # We got a directory, enter it for further processing
-            collectFiles(file_path, files)
 
 # TODO: Implement modification time filter as parameter
 def getRemoteFiles():
