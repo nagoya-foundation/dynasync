@@ -16,12 +16,13 @@
 import boto3
 import math
 import os
+import sys
 import lzma
-import tqdm
+from tqdm import trange
 import config
 from time import time, sleep
 from hashlib import md5
-from decimal import *
+from decimal import Decimal
 
 # ==== Connect to DynamoDB ====================================================
 
