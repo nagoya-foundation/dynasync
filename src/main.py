@@ -113,8 +113,8 @@ def updateIndex(file, chunkList, mtime):
 def setDeleted(file, mtime):
     print("File " + file + " deleted, updating.")
     # TODO: use try-catch
-    index.put_item(
-        Item = {
+    config.index.put_item(
+        Item={
             'filePath': file,
             'mtime':    Decimal(mtime),
             'deleted':  True
