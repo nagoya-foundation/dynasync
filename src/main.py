@@ -188,52 +188,6 @@ def listRemoteFiles():
         m_time = fi['mtime']
         print(f'{size}\t{m_time}\t{name}')
 
-    # Put all files in a list
-    local_files = {}
-    collectFiles(track_dirs, local_files)
-
-    # Synchronized, now we watch for changes
-    while True:
-        # Each round lasts a minimum of 20 seconds
-        roundStart = time()
-
-        # Recollect files
-        # TODO: use try-catch
-        remote_files = getRemoteFiles()
-        new_local_files = {}
-        collectFiles(track_dirs, new_local_files)
-
-        # Resolve and send updates
-        for file in new_local_files:
-            if new_local_files[file] > max(
-                local_files.get(file, 0),
-                remote_files.get(file, {'mtime': 0})['mtime']
-            ):
-                sendFile(file)
-
-        # Update deleted files
-        for file in set(local_files) - set(new_local_files):
-            setDeleted(file, time())
-
-        # Delete files
-        for file in set(remote_files) - set(new_local_files):
-            getFile(track_dirs, file, remote_file[file]['chunks'])
-            print('deleting file ' + file)
-            os.remove(os.path.join(track_dirs, file))
-
-        local_files = new_local_files
-
-        # Wait if necessary
-        if time() - roundStart < 20:
-            sleep(20 - time() + roundStart)
-
-
-# ==== Program execution ======================================================
-
-if __name__ == '__main__':
-    try:
-        # Run initialization
-        sync()
 
 # Main execution
 if sys.argv[1] == 'init':
