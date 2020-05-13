@@ -111,23 +111,20 @@ def setDeleted(file, mtime):
         }
     )
 
+
 def getFile(file, chunks):
-
-    # Expand ~ in file path
-    file_path = os.path.join(os.path.expanduser(track_dirs), file)
-
     # Initialize empty file contents variable
     content = b''
 
     # Get each chunk
-    for i in tqdm.tqdm(range(len(chunks)), ascii=True, desc=os.path.basename(file)):
+    for chunk in trange(chunks, ascii=True, desc=os.path.basename(file)):
         start = time()
         try:
-            new_file = table.get_item(
-                Key = {
-                    'chunkid': chunks[i]
+            new_file = config.table.get_item(
+                Key={
+                    'chunkid': chunk
                 },
-                ReturnConsumedCapacity = 'TOTAL'
+                ReturnConsumedCapacity='TOTAL'
             )
             # Collect chunk's contents
             content += lzma.decompress(new_file['Item']['content'].value)
@@ -136,25 +133,17 @@ def getFile(file, chunks):
             exit()
 
         except:
-            print("Chunk " + chunks[i] + " not found, file will not be saved!")
+            print("Chunk " + chunk + " not found, file will not be saved!")
             return
 
         # Wait based on consumed capacity
-        cons = new_file['ConsumedCapacity']['CapacityUnits']/20 - time() + start
+        cons = new_file['ConsumedCapacity']['CapacityUnits'] / \
+            20 - time() + start
 
         if cons > 0:
             sleep(cons)
 
-    # Write file to disk
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    with open(os.path.join(file_path, file), 'wb') as file_df:
-        try:
-            file_df.write(content)
-        except IOError as error:
-            print("Error writing file:", error)
-            abort()
-        finally:
-            file_df.close()
+    print(content)
 
 # Get all files under the selected dir
 def collectFiles(dir, files):
