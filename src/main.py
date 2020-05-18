@@ -85,6 +85,24 @@ def set_deleted(file, mtime):
 
 
 def get_file(file_name):
+    file_info = config.storage.get_object('brein-meta', file_name)
+    if file_info.status != 200:
+        print(file_info.data, file=sys.stderr)
+
+    chunks = file_info.data.split('\n')
+    pool = mp.Pool(8*mp.cpu_count())
+
+    # Get each chunk
+    contents = pool.map(
+        lambda x: config.storage.get_object('brein', x).data,
+        chunks,
+    )
+
+    # Collect chunk's contents
+    os.write(1, ''.join(map(lzma.decompress, contents))+'\n')
+
+
+def sync_file(file_name):
     file_info = config.index.query(
         IndexName='filePath-index',
         KeyConditionExpression=Key('filePath').eq(file_name)
