@@ -18,85 +18,57 @@ import math
 import os
 import sys
 import lzma
+from io import BytesIO
+import multiprocessing as mp
 from tqdm import tqdm
 import config
-from time import time, sleep
 from hashlib import md5
 from boto3.dynamodb.conditions import Key, Attr
 
 
 # Send a file to remote table
 def send_file(file_name):
-    file_path = os.path.abspath(file_name)
-
     # Open file and compress its contents
-    with open(file_path, 'rb') as file_con:
-        fileBytes = file_con.read()
-        fileLen = len(fileBytes)
+    with open(os.path.abspath(file_name), 'rb') as file_con:
+        file_bytes = file_con.read()
+        file_len = len(file_bytes)
 
-    # Verify file size
-    # Each item in the index table has about 124 bytes, considering 0 chunks,
-    # each chunk hash adds 32 bytes, the item size limit is 400KB set by AWS,
-    # so 124 + 32x = 400*1000. Solving the equation gives 12496.125 chunks,
-    # as each chunk contains the maximum of 399,901 bytes of the file, so we
-    # multiply, and the file size is 4.997.212.883,625 bytes, roughly 4.99GB.
-    if fileLen > 4997212883:
-        print("File " + file_path + " is too large (> 4,99 GB), skipping...")
-        return 0
-
-    # Zero length files may corrupt good files
-    if fileLen == 0:
-        print(file_path + " has 0 length and will not be sent.")
-        return
-
-    # Get modification time for updateIndex
-    mtime = os.path.getmtime(file_path)
-
-    # Send content in pieces of 399.901 bytes
-    chunks = math.ceil(fileLen/399901)
-    hashes = []
+    # Send content in pieces of 512 Kilobytes
+    chunks = math.ceil(file_len/(512*1024))
+    hashes = ""
     ck = 0
-    for ck in tqdm(chunks, ascii=True, desc=file_path):
-        # Start the clock
-        start = time()
+    file_path = os.path.relpath(file_name, os.getenv('HOME'))
 
+    # Parallel pool
+    pool = mp.Pool(8*mp.cpu_count())
+    for ck in tqdm(range(chunks), ascii=True, desc=file_path):
         # Send the chunk and its md5sum
-        chunk = fileBytes[ck*399901:(ck + 1)*399901]
+        chunk = file_bytes[ck*(512*1024):(ck + 1)*(512*1024)]
         hash = md5(chunk).hexdigest()
-        hashes.append(hash)
+        hashes += hash + "\n"
         ck += 1
 
         # Try to send the chunk
-        try:
-            config.table.put_item(
-                Item={
-                    'chunkid': hash,
-                    'content': lzma.compress(chunk)
-                },
-                ConditionExpression='attribute_not_exists(chunkid)'
-            )
-
-            # Wait a sec to preserve throughput
-            if len(chunk)/(4000*24*(time() - start)) - 1 > 0:
-                sleep(len(chunk)/(4000*24*(time() - start)) - 1)
-
-        except KeyboardInterrupt:
-            exit()
-
-        except:
-            pass
-
-    # Update index regardless of the size
-    try:
-        config.index.put_item(
-            Item={
-                'filePath': file_path,
-                'fileSize': fileLen,
-                'mtime':    int(mtime),
-                'deleted':  'false',
-                'chunks':   hashes
-            }
+        data = lzma.compress(chunk)
+        pool.apply_async(
+            config.storage.put_object,
+            args=('brein', hash, BytesIO(data), len(data))
         )
+
+    pool.close()
+    pool.join()
+    config.storage.put_object(
+        'brein-meta',
+        file_path,
+        BytesIO(hashes),
+        len(hashes),
+        metadata={
+            'deleted': False,
+            'size': file_len,
+            'name': file_name,
+            'm_time': os.path.getmtime(file_path)
+        }
+    )
     except Exception as e:
         print(e)
 
