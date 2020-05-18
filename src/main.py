@@ -181,3 +181,5 @@ if sys.argv[1] == 'list':
     list_remote_files()
 elif sys.argv[1] == 'get':
     get_file(sys.argv[2])
+elif sys.argv[1] == 'send':
+    send_file(sys.argv[2])
