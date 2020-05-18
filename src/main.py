@@ -161,26 +161,20 @@ def list_remote_files():
         "FilterExpression": 'deleted = :a'
     }
 
-    scan_result = config.index.scan(query, IndexName='meta-index')
-    for fi in scan_result['Items']:
-        name = fi['filePath']
-        size = fi.get('fileSize', 0)
-        m_time = int(fi['mtime'])
-        print(f'{size}\t{m_time}\t{name}')
+def _print_file(fi):
+    o = config.storage.stat_object('brein-meta', fi.object_name)
+    name = o.metadata['x-amz-meta-name']
+    size = o.metadata['x-amz-meta-size']
+    m_time = o.metadata['x-amz-meta-m_time']
+    print(f'{size}\t{m_time}\t{name}')
 
-    # Keep scanning until all results are received
-    while 'LastEvaluatedKey' in scan_result.keys():
-        # Scan from the last result
-        scan_result = config.index.scan(
-            query,
-            IndexName='meta-index',
-            ExclusiveStartKey=scan_result['LastEvaluatedKey']
-        )
-        for fi in scan_result['Items']:
-            name = fi['filePath']
-            size = fi.get('fileSize', 0)
-            m_time = fi['mtime']
-            print(f'{size}\t{m_time}\t{name}')
+
+def list_remote_files():
+    files = config.storage.list_objects('brein-meta')
+
+    # Parallel printing
+    pool = mp.Pool(mp.cpu_count())
+    pool.map(_print_file, files)
 
 
 # Main execution
