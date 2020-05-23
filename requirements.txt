@@ -11,7 +11,6 @@ jmespath==0.9.3
 macholib==1.9
 pefile==2017.11.5
 pipreqs==0.4.9
-PyInstaller==3.3.1
 python-dateutil==2.7.3
 pytz==2017.3
 requests==2.20.0
