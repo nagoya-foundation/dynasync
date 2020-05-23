@@ -12,6 +12,13 @@
 #
 #  Copyright Nagoya Foundation
 # --------------------------------------------------------------------------- #
+"""dynasync: an utility to sync files with a remote object file storage
+Options: 
+  list	displays all remote files
+  get <filename>	fetches and prints the contents
+  send <filename>	saves the file on remote
+dynasync 1.0.0 - Nagoya Foundation, blmayer"""
+
 
 import boto3
 import math
@@ -96,10 +103,14 @@ def get_file(file_name):
 
 def list_remote_files():
     for fi in files.objects.all():
-        print(f"{fi.size/32}\t{fi.key}")
+        print(fi.key)
 
 
 # Main execution
+if len(sys.argv) == 1:
+    print(__doc__)
+    sys.exit(1)
+
 connect()
 if sys.argv[1] == 'list':
     list_remote_files()
