@@ -41,17 +41,18 @@ def connect():
 
 
 # Send a file to remote table
-def send_file(file_name):
+def send_file(file_path):
+    file_name = os.path.basename(file_path)
+
     # Check if file already exists
-    file_path = os.path.relpath(file_name, os.getenv('HOME'))
     content = BytesIO()
     try:
-        files.download_fileobj(Key=file_path, Fileobj=content)
+        files.download_fileobj(Key=file_name, Fileobj=content)
     except Exception as e:
         pass
 
     if len(content.getvalue()) != 0 :
-        c = input(f"file {file_path} already exists, overwrite? (y/N)\n")
+        c = input(f"file {file_name} already exists, overwrite? (y/N)\n")
         if c != 'y':
             return
 
@@ -73,7 +74,7 @@ def send_file(file_name):
         chunks.put_object(Key=hash, Body=chunk)
 
     files.put_object(
-        Key=file_path,
+        Key=file_name,
         Body=bytes('\n'.join(hashes), 'utf-8')
     )
 
