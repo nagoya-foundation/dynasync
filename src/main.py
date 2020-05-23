@@ -42,6 +42,19 @@ def connect():
 
 # Send a file to remote table
 def send_file(file_name):
+    # Check if file already exists
+    file_path = os.path.relpath(file_name, os.getenv('HOME'))
+    content = BytesIO()
+    try:
+        files.download_fileobj(Key=file_path, Fileobj=content)
+    except Exception as e:
+        pass
+
+    if len(content.getvalue()) != 0 :
+        c = input(f"file {file_path} already exists, overwrite? (y/N)\n")
+        if c != 'y':
+            return
+
     # Open file and compress its contents
     with open(os.path.abspath(file_name), 'rb') as file_con:
         file_bytes = file_con.read()
