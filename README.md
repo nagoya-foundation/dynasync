@@ -1,23 +1,41 @@
 # dynasync
 
-> In this branch we use an exposed API to send the files under selected folders to the DynamoDB service. The program will send or receive files to a lambda function using the API Gateway AWS service and store it securely. So you have versioning for your files for free since that AWS offers 25GiB DynamoDB storage as a free service.
+> This program will send, list or receive files to an object storage and store it securely.
 
-This new version permits multiple connections at the same time, so it is a new step in the development of this helpful tool.
 
 ## Configuring
 
-In this branch, you only need your API key from the API Gateway service.
+Before running you must define two environment variables: DYNA_KEY and DYNA_SECRET with you key id and secret values, also, change the url in the code.
+
 
 ## Requisites
 
-- Python > 3.6
+- Python > 3
 - pip
 
 To install Python please visit its [Official Website](https://www.python.org/) and simply follow the instructions. Then you can install boto3 package with: `pip install -r requirements.txt`. And you're good to go.
 
+
 ## Running dynasync
 
-Simply issue the command: `./main.py`, it will run a setup script and then start monitoring the files you selected.
+
+For a better experience move the src/main.py file to your path with a name you prefer.
+
+
+### Sending a file
+
+Run `./main.py send <file>`, passing the path to the file, before sending, the program will append the relative path from your home directory.
+
+
+### Getting a file
+
+Run `./main.py get <file>`, passing the path to the file, it will print the file's content to terminal, you may use redirection to create a file.
+
+
+### Listing remote files
+
+Run `./main.py list` and the program will print the size, in chunks, and the names to terminal.
+
 
 ## Meta
 
@@ -25,17 +43,13 @@ Created by: Brian Mayer - bleemayer@gmail.com
 Initial commit: August 27, 2018
 Distributed under BSD3-clause license. See [LICENSE](LICENSE) for more information.
 
-### Current work
-
-- Creating the back-end lambda function
-- Adding support for more than one folder tracking
 
 ### To-do
 
 There are lots of things to do, the ones in my mind now are listed below.
 
-- Create o front-end program
-- Create a nice user interface for configuring the front-end
+- Create a front-end program
+
 
 ### Contributing
 
