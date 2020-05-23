@@ -61,12 +61,10 @@ def send_file(file_name):
 
     # Send content in pieces of 512 Kilobytes
     compressed_data = lzma.compress(file_bytes)
-    chunks = math.ceil(len(compressed_data)/(512*1024))
+    parts = math.ceil(len(compressed_data)/(512*1024))
     hashes = []
-    file_path = os.path.relpath(file_name, os.getenv('HOME'))
 
-    # Parallel pool
-    for ck in tqdm(range(chunks), ascii=True, desc=file_path):
+    for ck in tqdm(range(parts), ascii=True, desc=file_path):
         # Send the chunk and its md5sum
         chunk = compressed_data[ck*(512*1024):(ck + 1)*(512*1024)]
         hash = str(md5(chunk).hexdigest())
