@@ -64,7 +64,7 @@ def send_file(file_path):
             return
 
     # Open file and compress its contents
-    with open(os.path.abspath(file_name), 'rb') as file_con:
+    with open(file_path, 'rb') as file_con:
         file_bytes = file_con.read()
 
     # Send content in pieces of 512 Kilobytes
@@ -72,7 +72,7 @@ def send_file(file_path):
     parts = math.ceil(len(compressed_data)/(512*1024))
     hashes = []
 
-    for ck in tqdm(range(parts), ascii=True, desc=file_path):
+    for ck in tqdm(range(parts), ascii=True, desc=file_name):
         # Send the chunk and its md5sum
         chunk = compressed_data[ck*(512*1024):(ck + 1)*(512*1024)]
         hash = str(md5(chunk).hexdigest())
