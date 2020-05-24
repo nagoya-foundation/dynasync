@@ -55,7 +55,7 @@ def send_file(file_path):
     content = BytesIO()
     try:
         files.download_fileobj(Key=file_name, Fileobj=content)
-    except Exception as e:
+    except:
         pass
 
     if len(content.getvalue()) != 0 :
