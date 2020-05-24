@@ -1,17 +1,18 @@
 #! /usr/bin/env python3
 
 # --------------------------------------------------------------------------- #
-#  PROJECT: dynasync: An utility that uses AWS's DynamoDB to store your
-#  files.
+#  PROJECT: dynasync: An utility to save and recover your files on a objetct
+#  stogare service.
 #
 #  AUTHOR: Brian Mayer
 #
-#  DESCRIPTION: Main file for dynasync, it uses the AWS low-level API to make
-#  requests to DynamoDB. We try to make it as efficient as possible with the
-#  help of hashing and modification time to only synchronize new files.
+#  DESCRIPTION: Main file for dynasync, it uses the boto3 API to make requests
+#  to a object storage. We try to make it as efficient as possible with the
+#  help of splitting and compression to store and reutilize chunks..
 #
 #  Copyright Nagoya Foundation
 # --------------------------------------------------------------------------- #
+
 """dynasync: an utility to sync files with a remote object file storage
 Options: 
   list	displays all remote files
