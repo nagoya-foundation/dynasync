@@ -14,10 +14,15 @@
 # --------------------------------------------------------------------------- #
 
 """dynasync: an utility to sync files with a remote object file storage
-Options: 
+Usage:
+  dynasync command [options] [filename]
+Available commands are: 
   list	displays all remote files
   get <filename>	fetches and prints the contents
   send <filename>	saves the file on remote
+Available options for send:
+  -y    yes to overwrite file
+  -n <name> send filename as name
 dynasync 1.0.0 - Nagoya Foundation, blmayer"""
 
 
@@ -49,8 +54,10 @@ def connect():
 
 
 # Send a file to remote table
-def send_file(file_path):
+def send_file(file_path, name, y):
     file_name = os.path.basename(file_path)
+    if name is not None:
+        file_name = name
 
     # Check if file already exists
     content = BytesIO()
@@ -59,17 +66,18 @@ def send_file(file_path):
     except:
         pass
 
-    if len(content.getvalue()) != 0 :
+    if len(content.getvalue()) != 0 and not y:
         c = input(f"file {file_name} already exists, overwrite? (y/N)\n")
         if c != 'y':
             return
 
     # Open file and compress its contents
+    # TODO: Open and compress in one call
     with open(file_path, 'rb') as file_con:
-        file_bytes = file_con.read()
+        compressed_data = lzma.compress(file_con.read())
+        
 
     # Send content in pieces of 512 Kilobytes
-    compressed_data = lzma.compress(file_bytes)
     parts = math.ceil(len(compressed_data)/(512*1024))
     hashes = []
 
@@ -79,25 +87,38 @@ def send_file(file_path):
         hash = str(md5(chunk).hexdigest())
         hashes.append(hash)
 
-        chunks.put_object(Key=hash, Body=chunk)
+        try:
+            chunks.put_object(Key=hash, Body=chunk)
+        except Exception as e:
+            print(e)
 
-    files.put_object(
-        Key=file_name,
-        Body=bytes('\n'.join(hashes), 'utf-8')
-    )
+    try:
+        files.put_object(
+            Key=file_name,
+            Body=bytes('\n'.join(hashes), 'utf-8')
+        )
+    except Exception as e:
+        print(e)
 
 
 def get_file(file_name):
     content = BytesIO()
-    files.download_fileobj(Key=file_name, Fileobj=content)
+    try:
+        files.download_fileobj(Key=file_name, Fileobj=content)
+    except Exception as e:
+        print(e)
+        return
 
     # Get each chunk
-    for c in content.getvalue().split(b'\n'):
+    hashes = content.getvalue().split(b'\n')
+    content = b''
+    for c in hashes:
         chunk = BytesIO()
         chunks.download_fileobj(Key=c.decode('ascii'), Fileobj=chunk)
+        content += chunk.getvalue()
 
-        # Collect chunk's contents
-        os.write(1, lzma.decompress(chunk.getvalue()))
+    # Collect chunk's contents
+    os.write(1, lzma.decompress(content))
 
     print("")
 
@@ -118,4 +139,29 @@ if sys.argv[1] == 'list':
 elif sys.argv[1] == 'get':
     get_file(sys.argv[2])
 elif sys.argv[1] == 'send':
-    send_file(sys.argv[2])
+    y = False
+    name = None
+    path = ""
+    i = 1
+    while i <= len(sys.argv[2:]):
+        i += 1
+        if sys.argv[i] == '-n':
+            if sys.argv[i+1:] == []:
+                print("error: missing name argument")
+                print(__doc__)
+                sys.exit(2)
+            name = sys.argv[i+1]
+            i += 1
+        elif sys.argv[i] == '-y':
+            y = True
+        else:
+            path = sys.argv[i]
+    if path == "":
+        print("error: missing filename argument")
+        print(__doc__)
+        sys.exit(3)
+    send_file(path, name, y)
+else:
+    print('invalid command:', sys.argv[1])
+    print(__doc__)
+    sys.exit(-1)
