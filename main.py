@@ -60,19 +60,19 @@ def send_file(file_path, name, y):
         file_name = name
 
     # Check if file already exists
-    content = BytesIO()
-    try:
-        files.download_fileobj(Key=file_name, Fileobj=content)
-    except:
-        pass
+    if not y:
+        content = BytesIO()
+        try:
+            files.download_fileobj(Key=file_name, Fileobj=content)
+        except:
+            pass
 
-    if len(content.getvalue()) != 0 and not y:
-        c = input(f"file {file_name} already exists, overwrite? (y/N)\n")
-        if c != 'y':
-            return
+        if len(content.getvalue()) != 0:
+            c = input(f"file {file_name} already exists, overwrite? (y/N)\n")
+            if c != 'y':
+                return
 
     # Open file and compress its contents
-    # TODO: Open and compress in one call
     with open(file_path, 'rb') as file_con:
         compressed_data = lzma.compress(file_con.read())
         
