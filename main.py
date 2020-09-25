@@ -1,33 +1,35 @@
 #! /usr/bin/env python3
 
 # --------------------------------------------------------------------------- #
-#  PROJECT: dynasync: An utility to save and recover your files on a objetct
+#  PROJECT: fsync: An utility to save and recover your files on a objetct
 #  stogare service.
 #
 #  AUTHOR: Brian Mayer
 #
-#  DESCRIPTION: Main file for dynasync, it uses the boto3 API to make requests
+#  DESCRIPTION: Main file for fsync, it uses the boto3 API to make requests
 #  to a object storage. We try to make it as efficient as possible with the
 #  help of splitting and compression to store and reutilize chunks..
 #
 #  Copyright Nagoya Foundation
 # --------------------------------------------------------------------------- #
 
-"""dynasync: an utility to sync files with a remote object file storage
+"""fsync: an utility to sync files with a remote object file storage
 Usage:
-  dynasync command [options] [filename]
+  fsync command [options] [filename]
 Available commands are: 
-  list	displays all remote files
-  get <filename>	fetches and prints the contents
-  send <filename>	saves the file on remote
+  list	                displays all remote files
+  get   <filename>	fetches and prints the contents
+  send  <filename>	saves the file on remote
+  configure             run configuration steps
 Available options for send:
   -y    yes to overwrite file
-  -n <name> send filename as name
-dynasync 1.0.0 - Nagoya Foundation, blmayer"""
+  -n    <name> send filename as name
+fsync 1.0.0 - Nagoya Foundation, blmayer"""
 
 
 import boto3
 import math
+import json
 import os
 import sys
 import lzma
@@ -39,18 +41,44 @@ from hashlib import md5
 chunks = None
 files = None
 
+configfile = os.path.expanduser("~/.config/fsync.conf")
+config = {}
+
+def configure():
+    global config
+
+    if os.path.exists(configfile):
+        config = json.loads(open(configfile).read())
+    else:
+        print("No configuration file found, running configure")
+        config["url"] = input("Enter the storage URL:\n")
+        config["region"] = input("Enter the region:\n")
+        config["key"] = input("Enter the key ID:\n")
+        config["secret"] = input("Enter the secret:\n")
+    
+        json.dump(config, open(configfile, "w"))
+
+        storage = boto3.Session(region_name=config["region"]).resource(
+            's3',
+            endpoint_url=config["url"],  # 'https://s3.fr-par.scw.cloud',
+            aws_access_key_id=config["key"],  # os.getenv('DYNA_KEY'),
+            aws_secret_access_key=config["secret"]  # os.getenv('DYNA_SECRET')
+        )
+        storage.create_bucket(Bucket="fsync-chunks")
+        storage.create_bucket(Bucket="fsync-files")
+
 
 def connect():
     global chunks, files
 
-    storage = boto3.Session(region_name="fr-par").resource(
+    storage = boto3.Session(region_name=config["region"]).resource(
         's3',
-        endpoint_url='https://s3.fr-par.scw.cloud',
-        aws_access_key_id=os.getenv('DYNA_KEY'),
-        aws_secret_access_key=os.getenv('DYNA_SECRET')
+        endpoint_url=config["url"],  ## 'https://s3.fr-par.scw.cloud',
+        aws_access_key_id=config["key"],  # os.getenv('DYNA_KEY'),
+        aws_secret_access_key=config["secret"]  # os.getenv('DYNA_SECRET')
     )
-    chunks = storage.Bucket('brein-chunks')
-    files = storage.Bucket('brein-files')
+    chunks = storage.Bucket('fsync-chunks')
+    files = storage.Bucket('fsync-files')
 
 
 # Send a file to remote table
@@ -133,6 +161,7 @@ if len(sys.argv) == 1:
     print(__doc__)
     sys.exit(1)
 
+configure()
 connect()
 if sys.argv[1] == 'list':
     list_remote_files()
