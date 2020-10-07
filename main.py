@@ -60,9 +60,9 @@ def configure():
 
         storage = boto3.Session(region_name=config["region"]).resource(
             's3',
-            endpoint_url=config["url"],  # 'https://s3.fr-par.scw.cloud',
-            aws_access_key_id=config["key"],  # os.getenv('DYNA_KEY'),
-            aws_secret_access_key=config["secret"]  # os.getenv('DYNA_SECRET')
+            endpoint_url=config["url"],
+            aws_access_key_id=config["key"],
+            aws_secret_access_key=config["secret"]
         )
         storage.create_bucket(Bucket="fsync-chunks")
         storage.create_bucket(Bucket="fsync-files")
@@ -73,9 +73,9 @@ def connect():
 
     storage = boto3.Session(region_name=config["region"]).resource(
         's3',
-        endpoint_url=config["url"],  ## 'https://s3.fr-par.scw.cloud',
-        aws_access_key_id=config["key"],  # os.getenv('DYNA_KEY'),
-        aws_secret_access_key=config["secret"]  # os.getenv('DYNA_SECRET')
+        endpoint_url=config["url"],
+        aws_access_key_id=config["key"],
+        aws_secret_access_key=config["secret"]
     )
     chunks = storage.Bucket('fsync-chunks')
     files = storage.Bucket('fsync-files')
