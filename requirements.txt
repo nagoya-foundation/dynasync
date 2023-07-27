@@ -10,7 +10,7 @@ idna==2.6
 jmespath==0.9.3
 macholib==1.9
 pefile==2017.11.5
-pipreqs==0.4.9
+pipreqs==0.4.12
 python-dateutil==2.7.3
 pytz==2017.3
 requests==2.31.0
